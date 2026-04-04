@@ -1,0 +1,87 @@
+@import url('@fontsource/montserrat/700.css');
+@import url('@fontsource/inter/400.css');
+@import url('@fontsource/inter/500.css');
+@import url('@fontsource/inter/600.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 96%;
+
+    --card: 217 33% 15%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 217 33% 15%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 43 96% 64%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 20%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 60%;
+
+    --accent: 160 84% 39%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 22%;
+    --input: 217 33% 22%;
+    --ring: 43 96% 64%;
+
+    --radius: 0.75rem;
+
+    --safe: 160 84% 39%;
+    --urgent: 0 84% 60%;
+    --streetlight: 43 96% 64%;
+    --streetlight-glow: 43 96% 64% / 0.15;
+
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 43 96% 64%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 217 33% 20%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 217 33% 22%;
+    --sidebar-ring: 43 96% 64%;
+
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  .streetlight-glow {
+    box-shadow: 0 0 20px hsl(var(--streetlight-glow)), 0 0 40px hsl(43 96% 64% / 0.08);
+  }
+
+  .card-resource {
+    @apply bg-card border border-border rounded-xl p-4 transition-colors active:bg-secondary;
+  }
+
+  .safe-indicator {
+    @apply text-accent font-semibold text-sm;
+  }
+}
