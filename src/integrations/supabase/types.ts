@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      device_tokens: {
+        Row: {
+          auth: string | null
+          created_at: string
+          device_id: string
+          p256dh: string | null
+          platform: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          auth?: string | null
+          created_at?: string
+          device_id: string
+          p256dh?: string | null
+          platform: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          auth?: string | null
+          created_at?: string
+          device_id?: string
+          p256dh?: string | null
+          platform?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_history: {
         Row: {
           device_id: string
