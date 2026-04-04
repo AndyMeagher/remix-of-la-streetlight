@@ -42,13 +42,11 @@ const MESSAGES = [
 const ENCOURAGEMENT_INDICES = MESSAGES.map((m, i) => m.type === "encouragement" ? i : -1).filter(i => i >= 0);
 const COMMUNITY_INDICES = MESSAGES.map((m, i) => m.type === "community" ? i : -1).filter(i => i >= 0);
 
-// Weighted random: 75% encouragement, 25% community
 function pickMessageIndex(excludeIndices: number[]): number {
   const roll = Math.random();
   const pool = roll < 0.75 ? ENCOURAGEMENT_INDICES : COMMUNITY_INDICES;
   const available = pool.filter(i => !excludeIndices.includes(i));
   if (available.length === 0) {
-    // Fallback: pick from any non-excluded
     const allAvailable = MESSAGES.map((_, i) => i).filter(i => !excludeIndices.includes(i));
     if (allAvailable.length === 0) return Math.floor(Math.random() * MESSAGES.length);
     return allAvailable[Math.floor(Math.random() * allAvailable.length)];
@@ -56,24 +54,158 @@ function pickMessageIndex(excludeIndices: number[]): number {
   return available[Math.floor(Math.random() * available.length)];
 }
 
-// Check if current hour is in acceptable delivery window (10am-8pm PT)
 function isDeliveryWindow(): boolean {
   const now = new Date();
-  // Convert to PT (UTC-7 or UTC-8 depending on DST)
-  const ptOffset = -7; // Approximate, good enough
+  const ptOffset = -7;
   const ptHour = (now.getUTCHours() + ptOffset + 24) % 24;
   return ptHour >= 10 && ptHour <= 20;
 }
 
-async function sendWebPush(subscription: { endpoint: string; p256dh: string; auth: string }, payload: string) {
+// ─── Base64url helpers ───
+
+function base64UrlDecode(str: string): Uint8Array {
+  const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const binary = atob(base64 + padding);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function base64UrlEncode(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// ─── Web Push (VAPID) ───
+
+function createPkcs8FromRaw(rawPrivateKey: Uint8Array, rawPublicKey: Uint8Array): ArrayBuffer {
+  const pkcs8Header = new Uint8Array([
+    0x30, 0x81, 0x87, 0x02, 0x01, 0x00, 0x30, 0x13,
+    0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
+    0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d,
+    0x03, 0x01, 0x07, 0x04, 0x6d, 0x30, 0x6b, 0x02,
+    0x01, 0x01, 0x04, 0x20
+  ]);
+  const middlePart = new Uint8Array([0xa1, 0x44, 0x03, 0x42, 0x00]);
+  const result = new Uint8Array(pkcs8Header.length + rawPrivateKey.length + middlePart.length + rawPublicKey.length);
+  result.set(pkcs8Header, 0);
+  result.set(rawPrivateKey, pkcs8Header.length);
+  result.set(middlePart, pkcs8Header.length + rawPrivateKey.length);
+  result.set(rawPublicKey, pkcs8Header.length + rawPrivateKey.length + middlePart.length);
+  return result.buffer;
+}
+
+async function encryptPayload(
+  p256dhKey: string,
+  authSecret: string,
+  plaintext: Uint8Array
+): Promise<{ encrypted: Uint8Array; salt: Uint8Array; localPublicKey: Uint8Array }> {
+  const clientPublicKey = base64UrlDecode(p256dhKey);
+  const clientAuth = base64UrlDecode(authSecret);
+
+  const localKeyPair = await crypto.subtle.generateKey(
+    { name: "ECDH", namedCurve: "P-256" },
+    true,
+    ["deriveBits"]
+  );
+
+  const localPublicKeyRaw = new Uint8Array(
+    await crypto.subtle.exportKey("raw", localKeyPair.publicKey)
+  );
+
+  const clientKey = await crypto.subtle.importKey(
+    "raw",
+    clientPublicKey.buffer as ArrayBuffer,
+    { name: "ECDH", namedCurve: "P-256" },
+    false,
+    []
+  );
+
+  const sharedSecret = new Uint8Array(
+    await crypto.subtle.deriveBits(
+      { name: "ECDH", public: clientKey },
+      localKeyPair.privateKey,
+      256
+    )
+  );
+
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+
+  const authInfo = new TextEncoder().encode("WebPush: info\0");
+  const authInfoFull = new Uint8Array(authInfo.length + clientPublicKey.length + localPublicKeyRaw.length);
+  authInfoFull.set(authInfo, 0);
+  authInfoFull.set(clientPublicKey, authInfo.length);
+  authInfoFull.set(localPublicKeyRaw, authInfo.length + clientPublicKey.length);
+
+  const authHkdfKey = await crypto.subtle.importKey(
+    "raw",
+    clientAuth.buffer as ArrayBuffer,
+    "HKDF",
+    false,
+    ["deriveBits"]
+  );
+  const prk = new Uint8Array(
+    await crypto.subtle.deriveBits(
+      { name: "HKDF", hash: "SHA-256", salt: sharedSecret, info: authInfoFull },
+      authHkdfKey,
+      256
+    )
+  );
+
+  const cekInfo = new TextEncoder().encode("Content-Encoding: aes128gcm\0");
+  const prkKey = await crypto.subtle.importKey("raw", prk, "HKDF", false, ["deriveBits"]);
+  const cek = new Uint8Array(
+    await crypto.subtle.deriveBits(
+      { name: "HKDF", hash: "SHA-256", salt, info: cekInfo },
+      prkKey,
+      128
+    )
+  );
+
+  const nonceInfo = new TextEncoder().encode("Content-Encoding: nonce\0");
+  const nonce = new Uint8Array(
+    await crypto.subtle.deriveBits(
+      { name: "HKDF", hash: "SHA-256", salt, info: nonceInfo },
+      prkKey,
+      96
+    )
+  );
+
+  const paddedPlaintext = new Uint8Array(plaintext.length + 1);
+  paddedPlaintext.set(plaintext, 0);
+  paddedPlaintext[plaintext.length] = 2;
+
+  const aesKey = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+  const ciphertext = new Uint8Array(
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, aesKey, paddedPlaintext)
+  );
+
+  const rs = 4096;
+  const header = new Uint8Array(16 + 4 + 1 + localPublicKeyRaw.length);
+  header.set(salt, 0);
+  new DataView(header.buffer).setUint32(16, rs);
+  header[20] = localPublicKeyRaw.length;
+  header.set(localPublicKeyRaw, 21);
+
+  const encrypted = new Uint8Array(header.length + ciphertext.length);
+  encrypted.set(header, 0);
+  encrypted.set(ciphertext, header.length);
+
+  return { encrypted, salt, localPublicKey: localPublicKeyRaw };
+}
+
+async function sendWebPush(
+  subscription: { endpoint: string; p256dh: string; auth: string },
+  payload: string
+): Promise<{ expired: boolean; status?: number }> {
   const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
   const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY")!;
 
-  // Import the VAPID private key
   const rawPrivateKey = base64UrlDecode(vapidPrivateKey);
   const rawPublicKey = base64UrlDecode(vapidPublicKey);
 
-  // Create JWT for VAPID
   const endpoint = new URL(subscription.endpoint);
   const audience = `${endpoint.protocol}//${endpoint.host}`;
 
@@ -105,8 +237,7 @@ async function sendWebPush(subscription: { endpoint: string; p256dh: string; aut
 
   const jwt = `${unsignedToken}.${base64UrlEncode(new Uint8Array(signature))}`;
 
-  // Encrypt the payload using Web Push encryption (aesgcm)
-  const { encrypted, salt, localPublicKey } = await encryptPayload(
+  const { encrypted } = await encryptPayload(
     subscription.p256dh,
     subscription.auth,
     new TextEncoder().encode(payload)
@@ -126,151 +257,116 @@ async function sendWebPush(subscription: { endpoint: string; p256dh: string; aut
   });
 
   if (!response.ok && response.status === 410) {
-    // Subscription expired
     return { expired: true };
   }
 
   return { expired: false, status: response.status };
 }
 
-function base64UrlDecode(str: string): Uint8Array {
-  const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
-  const binary = atob(base64 + padding);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
+// ─── APNs (iOS) Push ───
 
-function base64UrlEncode(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
+async function createApnsJwt(): Promise<string> {
+  const keyId = Deno.env.get("APNS_KEY_ID")!;
+  const teamId = Deno.env.get("APNS_TEAM_ID")!;
+  const privateKeyPem = Deno.env.get("APNS_KEY")!;
 
-function createPkcs8FromRaw(rawPrivateKey: Uint8Array, rawPublicKey: Uint8Array): ArrayBuffer {
-  // PKCS8 wrapper for EC P-256 private key
-  const pkcs8Header = new Uint8Array([
-    0x30, 0x81, 0x87, 0x02, 0x01, 0x00, 0x30, 0x13,
-    0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
-    0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d,
-    0x03, 0x01, 0x07, 0x04, 0x6d, 0x30, 0x6b, 0x02,
-    0x01, 0x01, 0x04, 0x20
-  ]);
-  const middlePart = new Uint8Array([0xa1, 0x44, 0x03, 0x42, 0x00]);
-  
-  const result = new Uint8Array(pkcs8Header.length + rawPrivateKey.length + middlePart.length + rawPublicKey.length);
-  result.set(pkcs8Header, 0);
-  result.set(rawPrivateKey, pkcs8Header.length);
-  result.set(middlePart, pkcs8Header.length + rawPrivateKey.length);
-  result.set(rawPublicKey, pkcs8Header.length + rawPrivateKey.length + middlePart.length);
-  
-  return result.buffer;
-}
-
-async function encryptPayload(
-  p256dhKey: string,
-  authSecret: string,
-  plaintext: Uint8Array
-): Promise<{ encrypted: Uint8Array; salt: Uint8Array; localPublicKey: Uint8Array }> {
-  const clientPublicKey = base64UrlDecode(p256dhKey);
-  const clientAuth = base64UrlDecode(authSecret);
-
-  // Generate local ECDH key pair
-  const localKeyPair = await crypto.subtle.generateKey(
-    { name: "ECDH", namedCurve: "P-256" },
-    true,
-    ["deriveBits"]
+  // Parse the .p8 PEM key
+  const pemContents = privateKeyPem
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\s/g, "");
+  const keyData = base64UrlDecode(
+    pemContents.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
   );
 
-  const localPublicKeyRaw = new Uint8Array(
-    await crypto.subtle.exportKey("raw", localKeyPair.publicKey)
-  );
-
-  // Import client public key
-  const clientKey = await crypto.subtle.importKey(
-    "raw",
-    clientPublicKey,
-    { name: "ECDH", namedCurve: "P-256" },
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    keyData.buffer as ArrayBuffer,
+    { name: "ECDSA", namedCurve: "P-256" },
     false,
-    []
+    ["sign"]
   );
 
-  // Derive shared secret
-  const sharedSecret = new Uint8Array(
-    await crypto.subtle.deriveBits(
-      { name: "ECDH", public: clientKey },
-      localKeyPair.privateKey,
-      256
-    )
+  const header = { alg: "ES256", kid: keyId };
+  const now = Math.floor(Date.now() / 1000);
+  const claims = { iss: teamId, iat: now };
+
+  const headerB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
+  const claimsB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(claims)));
+  const unsignedToken = `${headerB64}.${claimsB64}`;
+
+  const signature = await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" },
+    key,
+    new TextEncoder().encode(unsignedToken)
   );
 
-  // Generate salt
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-
-  // HKDF to derive keys using aes128gcm content encoding
-  const authInfo = new TextEncoder().encode("WebPush: info\0");
-  const authInfoFull = new Uint8Array(authInfo.length + clientPublicKey.length + localPublicKeyRaw.length);
-  authInfoFull.set(authInfo, 0);
-  authInfoFull.set(clientPublicKey, authInfo.length);
-  authInfoFull.set(localPublicKeyRaw, authInfo.length + clientPublicKey.length);
-
-  // IKM = HKDF(auth_secret, shared_secret, authInfo, 32)
-  const authHkdfKey = await crypto.subtle.importKey("raw", clientAuth, "HKDF", false, ["deriveBits"]);
-  const prk = new Uint8Array(
-    await crypto.subtle.deriveBits(
-      { name: "HKDF", hash: "SHA-256", salt: sharedSecret, info: authInfoFull },
-      authHkdfKey,
-      256
-    )
-  );
-
-  // CEK = HKDF(salt, prk, "Content-Encoding: aes128gcm\0", 16)
-  const cekInfo = new TextEncoder().encode("Content-Encoding: aes128gcm\0");
-  const prkKey = await crypto.subtle.importKey("raw", prk, "HKDF", false, ["deriveBits"]);
-  const cek = new Uint8Array(
-    await crypto.subtle.deriveBits(
-      { name: "HKDF", hash: "SHA-256", salt, info: cekInfo },
-      prkKey,
-      128
-    )
-  );
-
-  // Nonce = HKDF(salt, prk, "Content-Encoding: nonce\0", 12)
-  const nonceInfo = new TextEncoder().encode("Content-Encoding: nonce\0");
-  const nonce = new Uint8Array(
-    await crypto.subtle.deriveBits(
-      { name: "HKDF", hash: "SHA-256", salt, info: nonceInfo },
-      prkKey,
-      96
-    )
-  );
-
-  // Add padding delimiter
-  const paddedPlaintext = new Uint8Array(plaintext.length + 1);
-  paddedPlaintext.set(plaintext, 0);
-  paddedPlaintext[plaintext.length] = 2; // delimiter
-
-  // Encrypt
-  const aesKey = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
-  const ciphertext = new Uint8Array(
-    await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, aesKey, paddedPlaintext)
-  );
-
-  // Build aes128gcm header: salt (16) + rs (4) + idlen (1) + keyid (65) + ciphertext
-  const rs = 4096;
-  const header = new Uint8Array(16 + 4 + 1 + localPublicKeyRaw.length);
-  header.set(salt, 0);
-  new DataView(header.buffer).setUint32(16, rs);
-  header[20] = localPublicKeyRaw.length;
-  header.set(localPublicKeyRaw, 21);
-
-  const encrypted = new Uint8Array(header.length + ciphertext.length);
-  encrypted.set(header, 0);
-  encrypted.set(ciphertext, header.length);
-
-  return { encrypted, salt, localPublicKey: localPublicKeyRaw };
+  return `${unsignedToken}.${base64UrlEncode(new Uint8Array(signature))}`;
 }
+
+async function sendApnsPush(
+  deviceToken: string,
+  payload: string,
+  bundleId: string
+): Promise<{ expired: boolean; status?: number }> {
+  const jwt = await createApnsJwt();
+
+  // Use production APNs endpoint
+  const url = `https://api.push.apple.com/3/device/${deviceToken}`;
+
+  const apnsPayload = JSON.parse(payload);
+  const iosPayload = JSON.stringify({
+    aps: {
+      alert: {
+        title: apnsPayload.title,
+        body: apnsPayload.body,
+      },
+      sound: "default",
+      "mutable-content": 1,
+    },
+    type: apnsPayload.type,
+  });
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `bearer ${jwt}`,
+        "apns-topic": bundleId,
+        "apns-push-type": "alert",
+        "apns-priority": "5",
+        "apns-expiration": "0",
+        "Content-Type": "application/json",
+      },
+      body: iosPayload,
+    });
+
+    // 410 Gone = token is no longer valid
+    if (response.status === 410) {
+      await response.text();
+      return { expired: true };
+    }
+
+    // 400 BadDeviceToken
+    if (response.status === 400) {
+      const body = await response.text();
+      try {
+        const parsed = JSON.parse(body);
+        if (parsed.reason === "BadDeviceToken" || parsed.reason === "Unregistered") {
+          return { expired: true };
+        }
+      } catch { /* ignore parse error */ }
+    }
+
+    await response.text();
+    return { expired: false, status: response.status };
+  } catch (err) {
+    console.error("APNs send error:", err);
+    return { expired: false, status: 500 };
+  }
+}
+
+// ─── Main handler ───
 
 Deno.serve(async (req) => {
   const corsHeaders = {
@@ -283,7 +379,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Check delivery window
     if (!isDeliveryWindow()) {
       return new Response(JSON.stringify({ message: "Outside delivery window" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -300,41 +395,111 @@ Deno.serve(async (req) => {
     weekStart.setHours(0, 0, 0, 0);
     const weekStartStr = weekStart.toISOString();
 
-    // Get all subscriptions
-    const { data: subs, error: subsError } = await supabase
+    // Get all device tokens
+    const { data: devices, error: devicesError } = await supabase
+      .from("device_tokens")
+      .select("*");
+
+    if (devicesError) throw devicesError;
+
+    // Also get legacy push_subscriptions for backward compatibility
+    const { data: legacySubs } = await supabase
       .from("push_subscriptions")
       .select("*");
 
-    if (subsError) throw subsError;
-    if (!subs || subs.length === 0) {
+    // Build unified list
+    interface DeviceEntry {
+      device_id: string;
+      platform: "web" | "ios";
+      token: string;
+      p256dh: string | null;
+      auth: string | null;
+      last_notified_at: string | null;
+      notifications_this_week: number;
+      week_start: string | null;
+    }
+
+    const allDevices: DeviceEntry[] = [];
+
+    // Add devices from new table
+    if (devices) {
+      for (const d of devices) {
+        allDevices.push({
+          device_id: d.device_id,
+          platform: d.platform as "web" | "ios",
+          token: d.token,
+          p256dh: d.p256dh,
+          auth: d.auth,
+          last_notified_at: null, // will check notification_history
+          notifications_this_week: 0,
+          week_start: null,
+        });
+      }
+    }
+
+    // Add legacy web subscriptions (if not already in device_tokens)
+    if (legacySubs) {
+      const deviceTokenIds = new Set(allDevices.map(d => d.device_id));
+      for (const sub of legacySubs) {
+        if (!deviceTokenIds.has(sub.device_id)) {
+          allDevices.push({
+            device_id: sub.device_id,
+            platform: "web",
+            token: sub.endpoint,
+            p256dh: sub.p256dh,
+            auth: sub.auth,
+            last_notified_at: sub.last_notified_at,
+            notifications_this_week: sub.notifications_this_week || 0,
+            week_start: sub.week_start,
+          });
+        }
+      }
+    }
+
+    if (allDevices.length === 0) {
       return new Response(JSON.stringify({ message: "No subscribers" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Get the iOS bundle ID from request body or use default
+    let bundleId = "app.lastreetlight.luce";
+    try {
+      const body = await req.json();
+      if (body?.bundleId) bundleId = body.bundleId;
+    } catch { /* no body, use default */ }
+
     let sent = 0;
 
-    for (const sub of subs) {
-      // Reset weekly counter if new week
-      const subWeekStart = sub.week_start ? new Date(sub.week_start) : null;
-      let weeklyCount = sub.notifications_this_week || 0;
-      if (!subWeekStart || subWeekStart < weekStart) {
-        weeklyCount = 0;
-      }
+    for (const device of allDevices) {
+      // Get rate-limiting info from notification_history
+      const { data: recentHistory } = await supabase
+        .from("notification_history")
+        .select("sent_at, message_index")
+        .eq("device_id", device.device_id)
+        .gte("sent_at", weekStartStr)
+        .order("sent_at", { ascending: false });
+
+      const weeklyCount = recentHistory?.length || 0;
 
       // Max 5 per week
       if (weeklyCount >= 5) continue;
 
       // At least 24h between sends
-      if (sub.last_notified_at) {
-        const lastSent = new Date(sub.last_notified_at);
+      if (recentHistory && recentHistory.length > 0) {
+        const lastSent = new Date(recentHistory[0].sent_at);
         const hoursSince = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
         if (hoursSince < 24) continue;
       }
 
-      // Probabilistic send: ~3-5 per week = target ~0.57 per day
-      // With cron running every 2 hours during delivery window (~5 runs/day),
-      // probability per run = ~0.57/5 = ~0.11
+      // Also check legacy field for web devices
+      if (device.last_notified_at) {
+        const lastSent = new Date(device.last_notified_at);
+        const hoursSince = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
+        if (hoursSince < 24) continue;
+      }
+
+      // Probabilistic send: ~0.12 chance per cron run
       if (Math.random() > 0.12) continue;
 
       // Get recent message indices (last 7 days) to avoid repeats
@@ -342,7 +507,7 @@ Deno.serve(async (req) => {
       const { data: history } = await supabase
         .from("notification_history")
         .select("message_index")
-        .eq("device_id", sub.device_id)
+        .eq("device_id", device.device_id)
         .gte("sent_at", sevenDaysAgo);
 
       const recentIndices = (history || []).map((h: { message_index: number }) => h.message_index);
@@ -355,31 +520,52 @@ Deno.serve(async (req) => {
         type: message.type,
       });
 
-      const result = await sendWebPush(
-        { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-        payload
-      );
+      let result: { expired: boolean; status?: number };
 
-      if (result.expired) {
-        // Remove expired subscription
-        await supabase.from("push_subscriptions").delete().eq("device_id", sub.device_id);
+      try {
+        if (device.platform === "ios") {
+          result = await sendApnsPush(device.token, payload, bundleId);
+        } else {
+          // Web push
+          if (!device.p256dh || !device.auth) {
+            console.warn(`Skipping web device ${device.device_id}: missing p256dh or auth`);
+            continue;
+          }
+          result = await sendWebPush(
+            { endpoint: device.token, p256dh: device.p256dh, auth: device.auth },
+            payload
+          );
+        }
+      } catch (err) {
+        console.error(`Failed to send to ${device.device_id} (${device.platform}):`, err);
         continue;
       }
 
-      // Record history and update subscription
+      if (result.expired) {
+        // Remove expired token
+        await supabase.from("device_tokens").delete().eq("device_id", device.device_id);
+        // Also clean up legacy table if applicable
+        await supabase.from("push_subscriptions").delete().eq("device_id", device.device_id);
+        continue;
+      }
+
+      // Record history
       await supabase.from("notification_history").insert({
-        device_id: sub.device_id,
+        device_id: device.device_id,
         message_index: messageIndex,
       });
 
-      await supabase
-        .from("push_subscriptions")
-        .update({
-          last_notified_at: now.toISOString(),
-          notifications_this_week: weeklyCount + 1,
-          week_start: weekStartStr,
-        })
-        .eq("device_id", sub.device_id);
+      // Update legacy push_subscriptions if applicable
+      if (device.platform === "web") {
+        await supabase
+          .from("push_subscriptions")
+          .update({
+            last_notified_at: now.toISOString(),
+            notifications_this_week: weeklyCount + 1,
+            week_start: weekStartStr,
+          })
+          .eq("device_id", device.device_id);
+      }
 
       sent++;
     }
@@ -388,6 +574,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    console.error("Notification function error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
