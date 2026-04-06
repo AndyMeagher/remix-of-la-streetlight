@@ -1,7 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { PushNotifications } from "@capacitor/push-notifications";
 import { supabase } from "@/integrations/supabase/client";
 
-const VAPID_PUBLIC_KEY = "BEzy9XbX5PrQalbKsXuDLZ9OT33rLhjTLk1dhyDhkk-QeI4In3pQkvcDP3DjUmVSxyba8Njd2pyjGiydRNS9fAA";
+const VAPID_PUBLIC_KEY =
+  "BEzy9XbX5PrQalbKsXuDLZ9OT33rLhjTLk1dhyDhkk-QeI4In3pQkvcDP3DjUmVSxyba8Njd2pyjGiydRNS9fAA";
+
+const isNative = Capacitor.isNativePlatform();
+
+export interface ForegroundNotification {
+  title: string;
+  body: string;
+}
 
 function getDeviceId(): string {
   let id = localStorage.getItem("luce-device-id");
@@ -23,20 +33,102 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+function mapNativePermission(status: string): NotificationPermission {
+  if (status === "granted") return "granted";
+  if (status === "denied") return "denied";
+  return "default";
+}
+
 export function usePushNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>(
-    typeof Notification !== "undefined" ? Notification.permission : "default"
+    isNative
+      ? "default"
+      : typeof Notification !== "undefined"
+        ? Notification.permission
+        : "default",
   );
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [foregroundNotification, setForegroundNotification] =
+    useState<ForegroundNotification | null>(null);
 
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(console.error);
-    }
-    checkSubscription();
+  const clearForegroundNotification = useCallback(() => {
+    setForegroundNotification(null);
   }, []);
 
-  async function checkSubscription() {
+  useEffect(() => {
+    if (isNative) {
+      let cancelled = false;
+      let listenerHandles: Array<{ remove: () => Promise<void> }> = [];
+
+      (async () => {
+        // Register listeners before checking permission so we never miss the registration event
+        const handles = await Promise.all([
+          PushNotifications.addListener("registration", async (token) => {
+            const deviceId = getDeviceId();
+            await supabase.from("device_tokens").upsert(
+              {
+                device_id: deviceId,
+                platform: "ios",
+                token: token.value,
+                p256dh: null,
+                auth: null,
+              },
+              { onConflict: "device_id" },
+            );
+            setIsSubscribed(true);
+          }),
+
+          PushNotifications.addListener("registrationError", (err) => {
+            console.error("Native push registration error:", err);
+          }),
+
+          PushNotifications.addListener(
+            "pushNotificationReceived",
+            (notification) => {
+              // App is foregrounded — system won't show a banner, so we display in-app
+              setForegroundNotification({
+                title: notification.title ?? "Luce 💛",
+                body: notification.body ?? "",
+              });
+            },
+          ),
+
+          PushNotifications.addListener(
+            "pushNotificationActionPerformed",
+            () => {
+              // User tapped a background notification — nothing extra needed for now
+            },
+          ),
+        ]);
+
+        if (cancelled) {
+          handles.forEach((h) => h.remove());
+          return;
+        }
+        listenerHandles = handles;
+
+        // If permission already granted, re-register to refresh the APNs token
+        const status = await PushNotifications.checkPermissions();
+        const perm = mapNativePermission(status.receive);
+        setPermission(perm);
+        if (perm === "granted") {
+          await PushNotifications.register();
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+        listenerHandles.forEach((h) => h.remove());
+      };
+    } else {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js").catch(console.error);
+      }
+      checkWebSubscription();
+    }
+  }, []);
+
+  async function checkWebSubscription() {
     try {
       const reg = await navigator.serviceWorker?.ready;
       const sub = await reg?.pushManager?.getSubscription();
@@ -47,6 +139,32 @@ export function usePushNotifications() {
   }
 
   async function subscribe() {
+    return isNative ? subscribeNative() : subscribeWeb();
+  }
+
+  async function subscribeNative() {
+    try {
+      let permStatus = await PushNotifications.checkPermissions();
+      if (
+        permStatus.receive === "prompt" ||
+        permStatus.receive === "prompt-with-rationale"
+      ) {
+        permStatus = await PushNotifications.requestPermissions();
+      }
+      const perm = mapNativePermission(permStatus.receive);
+      setPermission(perm);
+      if (perm !== "granted") return false;
+
+      // The "registration" listener will fire and store the token + set isSubscribed
+      await PushNotifications.register();
+      return true;
+    } catch (err) {
+      console.error("Native push subscription failed:", err);
+      return false;
+    }
+  }
+
+  async function subscribeWeb() {
     try {
       const perm = await Notification.requestPermission();
       setPermission(perm);
@@ -55,7 +173,8 @@ export function usePushNotifications() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY).buffer as ArrayBuffer,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          .buffer as ArrayBuffer,
       });
 
       const subJson = sub.toJSON();
@@ -68,7 +187,7 @@ export function usePushNotifications() {
           p256dh: subJson.keys!.p256dh!,
           auth: subJson.keys!.auth!,
         },
-        { onConflict: "device_id" }
+        { onConflict: "device_id" },
       );
 
       setIsSubscribed(true);
@@ -79,5 +198,11 @@ export function usePushNotifications() {
     }
   }
 
-  return { permission, isSubscribed, subscribe };
+  return {
+    permission,
+    isSubscribed,
+    subscribe,
+    foregroundNotification,
+    clearForegroundNotification,
+  };
 }

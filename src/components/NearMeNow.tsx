@@ -3,6 +3,8 @@ import { MapPin, Navigation, Clock, Phone, ExternalLink, Filter, Loader2, Shield
 import { Button } from "./ui/button";
 import { useResources } from "../hooks/useResources";
 import type { Resource } from "./ResourceCard";
+import { Capacitor } from "@capacitor/core";
+import { Geolocation } from "@capacitor/geolocation";
 
 type CategoryFilter = "all" | "shelter" | "food" | "medical";
 
@@ -32,39 +34,65 @@ const NearMeNow = () => {
   const [openOnly, setOpenOnly] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
 
-  const findNearby = useCallback(() => {
-    if (!navigator.geolocation) {
-      setStatus("error");
-      return;
-    }
+  const findNearby = useCallback(async () => {
     setStatus("loading");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const allResources = resources
-          .filter((r) => ["shelter", "food", "medical"].includes(r.category))
-          .filter((r) => r.lat != null && r.lng != null);
 
-        const nearby: NearbyResource[] = allResources
-          .map((r) => {
-            const dist = haversineDistance(latitude, longitude, r.lat!, r.lng!);
-            return { ...r, calculatedDistance: parseFloat(dist.toFixed(1)) };
-          })
-          .filter((r) => r.calculatedDistance <= 10)
-          .sort((a, b) => a.calculatedDistance - b.calculatedDistance);
+    try {
+      let latitude: number;
+      let longitude: number;
 
-        setResults(nearby);
-        setStatus("results");
-      },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
+      if (Capacitor.getPlatform() === "ios") {
+        const permission = await Geolocation.requestPermissions();
+        if (permission.location !== "granted") {
           setStatus("denied");
-        } else {
-          setStatus("error");
+          return;
         }
-      },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
-    );
+        const pos = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: false,
+          timeout: 10000,
+        });
+        latitude = pos.coords.latitude;
+        longitude = pos.coords.longitude;
+      } else {
+        if (!navigator.geolocation) {
+          setStatus("error");
+          return;
+        }
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 60000,
+          });
+        });
+        latitude = pos.coords.latitude;
+        longitude = pos.coords.longitude;
+      }
+
+      const allResources = resources
+        .filter((r) => ["shelter", "food", "medical"].includes(r.category))
+        .filter((r) => r.lat != null && r.lng != null);
+
+      const nearby: NearbyResource[] = allResources
+        .map((r) => {
+          const dist = haversineDistance(latitude, longitude, r.lat!, r.lng!);
+          return { ...r, calculatedDistance: parseFloat(dist.toFixed(1)) };
+        })
+        .filter((r) => r.calculatedDistance <= 10)
+        .sort((a, b) => a.calculatedDistance - b.calculatedDistance);
+
+      setResults(nearby);
+      setStatus("results");
+    } catch (err: unknown) {
+      if (
+        err instanceof GeolocationPositionError &&
+        err.code === err.PERMISSION_DENIED
+      ) {
+        setStatus("denied");
+      } else {
+        setStatus("error");
+      }
+    }
   }, [resources]);
 
   const filtered = results.filter((r) => {
