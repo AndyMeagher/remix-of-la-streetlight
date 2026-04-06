@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { MapPin, Navigation, Clock, Phone, ExternalLink, Filter, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
 import { Button } from "./ui/button";
-import { shelterResources, foodResources, medicalResources, resourceCoordinates } from "./resourceData";
+import { useResources } from "../hooks/useResources";
 import type { Resource } from "./ResourceCard";
 
 type CategoryFilter = "all" | "shelter" | "food" | "medical";
@@ -12,7 +12,7 @@ interface NearbyResource extends Resource {
 }
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 3958.8; // Earth radius in miles
+  const R = 3958.8;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
@@ -26,6 +26,7 @@ function getDirectionsUrl(address: string): string {
 }
 
 const NearMeNow = () => {
+  const { shelterResources, foodResources, medicalResources, resources } = useResources();
   const [status, setStatus] = useState<"idle" | "loading" | "results" | "denied" | "error">("idle");
   const [results, setResults] = useState<NearbyResource[]>([]);
   const [openOnly, setOpenOnly] = useState(false);
@@ -40,20 +41,16 @@ const NearMeNow = () => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        const allResources: { resource: Resource; category: string }[] = [
-          ...shelterResources.map((r) => ({ resource: r, category: "shelter" })),
-          ...foodResources.map((r) => ({ resource: r, category: "food" })),
-          ...medicalResources.map((r) => ({ resource: r, category: "medical" })),
-        ];
+        const allResources = resources
+          .filter((r) => ["shelter", "food", "medical"].includes(r.category))
+          .filter((r) => r.lat != null && r.lng != null);
 
         const nearby: NearbyResource[] = allResources
-          .map(({ resource, category }) => {
-            const coords = resourceCoordinates[resource.id];
-            if (!coords) return null;
-            const dist = haversineDistance(latitude, longitude, coords.lat, coords.lng);
-            return { ...resource, calculatedDistance: parseFloat(dist.toFixed(1)), category };
+          .map((r) => {
+            const dist = haversineDistance(latitude, longitude, r.lat!, r.lng!);
+            return { ...r, calculatedDistance: parseFloat(dist.toFixed(1)) };
           })
-          .filter((r): r is NearbyResource => r !== null && r.calculatedDistance <= 10)
+          .filter((r) => r.calculatedDistance <= 10)
           .sort((a, b) => a.calculatedDistance - b.calculatedDistance);
 
         setResults(nearby);
@@ -68,7 +65,7 @@ const NearMeNow = () => {
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     );
-  }, []);
+  }, [resources]);
 
   const filtered = results.filter((r) => {
     if (openOnly && !r.isOpen) return false;
@@ -142,10 +139,8 @@ const NearMeNow = () => {
     );
   }
 
-  // Results view
   return (
     <div className="px-4 pt-6 pb-24">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-xl text-foreground">Nearby Resources</h2>
         <Button variant="ghost" size="sm" onClick={findNearby} className="text-xs text-primary">
@@ -153,7 +148,6 @@ const NearMeNow = () => {
         </Button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="flex items-center gap-1 mr-1">
           <Filter className="w-3.5 h-3.5 text-muted-foreground" />
@@ -183,7 +177,6 @@ const NearMeNow = () => {
         </button>
       </div>
 
-      {/* Privacy note */}
       <div className="flex items-center gap-2 bg-secondary/50 border border-border rounded-lg px-3 py-1.5 mb-4">
         <ShieldCheck className="w-3.5 h-3.5 text-safe flex-shrink-0" />
         <p className="text-[10px] text-muted-foreground">
@@ -191,7 +184,6 @@ const NearMeNow = () => {
         </p>
       </div>
 
-      {/* Results */}
       {filtered.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-sm text-muted-foreground mb-2">No nearby resources found.</p>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Bed, UtensilsCrossed, Heart, Search, Building2, HandHeart, Navigation } from "lucide-react";
+import { Bed, UtensilsCrossed, Heart, Search, Building2, HandHeart, Navigation, Loader2 } from "lucide-react";
 import luceMascot from "@/assets/luce-mascot.png";
 import BottomNav from "../components/BottomNav";
 import QuickExit from "../components/QuickExit";
@@ -8,28 +8,29 @@ import ResourceCard from "../components/ResourceCard";
 import SOSPanel from "../components/SOSPanel";
 import StreetTips from "../components/StreetTips";
 import NearMeNow from "../components/NearMeNow";
-import { shelterResources, foodResources, medicalResources, transitionalResources, traffickingResources } from "../components/resourceData";
 import LuceWelcome from "../components/LuceWelcome";
 import LuceNotificationPrompt from "../components/LuceNotificationPrompt";
 import LuceSoundToggle from "../components/LuceSoundToggle";
-
-const quickActions = [
-  { id: "shelters", label: "Shelters", icon: Bed, count: shelterResources.filter(r => r.isOpen).length },
-  { id: "transitional", label: "AB12 / TAY", icon: Building2, count: transitionalResources.filter(r => r.isOpen).length },
-  { id: "food", label: "Food", icon: UtensilsCrossed, count: foodResources.filter(r => r.isOpen).length },
-  { id: "medical", label: "Medical", icon: Heart, count: medicalResources.filter(r => r.isOpen).length },
-];
-
-const resourceMap: Record<string, { data: typeof shelterResources; icon: typeof Bed; title: string; description?: string }> = {
-  shelters: { data: shelterResources, icon: Bed, title: "Shelters & Housing" },
-  transitional: { data: transitionalResources, icon: Building2, title: "AB12 Transitional Housing", description: "Resources for Transitional Age Youth (18–24) eligible for AB12 extended foster care funding, THP-Plus, and ILP services." },
-  food: { data: foodResources, icon: UtensilsCrossed, title: "Food & Meals" },
-  medical: { data: medicalResources, icon: Heart, title: "Medical Care" },
-  getout: { data: traffickingResources, icon: HandHeart, title: "Safe Choices", description: "Confidential help for youth and young adults who may be victims of human trafficking. These organizations provide safe shelter, crisis support, legal aid, and a way out — no judgment, no questions." },
-};
+import { useResources } from "../hooks/useResources";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
+  const { loading, shelterResources, foodResources, medicalResources, transitionalResources, traffickingResources, resources } = useResources();
+
+  const quickActions = [
+    { id: "shelters", label: "Shelters", icon: Bed, count: shelterResources.filter(r => r.isOpen).length },
+    { id: "transitional", label: "AB12 / TAY", icon: Building2, count: transitionalResources.filter(r => r.isOpen).length },
+    { id: "food", label: "Food", icon: UtensilsCrossed, count: foodResources.filter(r => r.isOpen).length },
+    { id: "medical", label: "Medical", icon: Heart, count: medicalResources.filter(r => r.isOpen).length },
+  ];
+
+  const resourceMap: Record<string, { data: typeof shelterResources; icon: typeof Bed; title: string; description?: string }> = {
+    shelters: { data: shelterResources, icon: Bed, title: "Shelters & Housing" },
+    transitional: { data: transitionalResources, icon: Building2, title: "AB12 Transitional Housing", description: "Resources for Transitional Age Youth (18–24) eligible for AB12 extended foster care funding, THP-Plus, and ILP services." },
+    food: { data: foodResources, icon: UtensilsCrossed, title: "Food & Meals" },
+    medical: { data: medicalResources, icon: Heart, title: "Medical Care" },
+    getout: { data: traffickingResources, icon: HandHeart, title: "Safe Choices", description: "Confidential help for youth and young adults who may be victims of human trafficking. These organizations provide safe shelter, crisis support, legal aid, and a way out — no judgment, no questions." },
+  };
 
   const renderHome = () => (
     <div className="px-4 pt-6 pb-24">
@@ -86,15 +87,21 @@ const Index = () => {
 
       {/* Nearby Open */}
       <h2 className="font-display text-base text-foreground mb-3">Open Now Nearby</h2>
-      <div className="space-y-2">
-        {[...shelterResources, ...transitionalResources, ...foodResources, ...medicalResources]
-          .filter((r) => r.isOpen)
-          .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance))
-          .slice(0, 4)
-          .map((resource) => (
-            <ResourceCard key={resource.id} resource={resource} />
-          ))}
-      </div>
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 text-primary animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {[...shelterResources, ...transitionalResources, ...foodResources, ...medicalResources]
+            .filter((r) => r.isOpen)
+            .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance))
+            .slice(0, 4)
+            .map((resource) => (
+              <ResourceCard key={resource.id} resource={resource} />
+            ))}
+        </div>
+      )}
     </div>
   );
 
