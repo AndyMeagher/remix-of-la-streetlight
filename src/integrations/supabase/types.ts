@@ -101,6 +101,63 @@ export type Database = {
         }
         Relationships: []
       }
+      resources: {
+        Row: {
+          address: string
+          category: string
+          close_time: string | null
+          created_at: string
+          distance: string
+          hours: string
+          id: string
+          is_always_open: boolean
+          lat: number | null
+          lng: number | null
+          name: string
+          open_days: number[] | null
+          open_time: string | null
+          phone: string | null
+          tags: string[] | null
+          website: string | null
+        }
+        Insert: {
+          address: string
+          category: string
+          close_time?: string | null
+          created_at?: string
+          distance?: string
+          hours?: string
+          id: string
+          is_always_open?: boolean
+          lat?: number | null
+          lng?: number | null
+          name: string
+          open_days?: number[] | null
+          open_time?: string | null
+          phone?: string | null
+          tags?: string[] | null
+          website?: string | null
+        }
+        Update: {
+          address?: string
+          category?: string
+          close_time?: string | null
+          created_at?: string
+          distance?: string
+          hours?: string
+          id?: string
+          is_always_open?: boolean
+          lat?: number | null
+          lng?: number | null
+          name?: string
+          open_days?: number[] | null
+          open_time?: string | null
+          phone?: string | null
+          tags?: string[] | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       street_tips: {
         Row: {
           category: string
