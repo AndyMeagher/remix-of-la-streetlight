@@ -19,7 +19,6 @@ const Index = () => {
 
   const quickActions = [
     { id: "shelters", label: "Shelters", icon: Bed, count: shelterResources.filter(r => r.isOpen).length },
-    { id: "transitional", label: "AB12 / TAY", icon: Building2, count: transitionalResources.filter(r => r.isOpen).length },
     { id: "food", label: "Food", icon: UtensilsCrossed, count: foodResources.filter(r => r.isOpen).length },
     { id: "dropin", label: "Drop-in", icon: Coffee, count: dropinResources.filter(r => r.isOpen).length },
     { id: "medical", label: "Medical", icon: Heart, count: medicalResources.filter(r => r.isOpen).length },
@@ -71,7 +70,7 @@ const Index = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-5 gap-2 mb-8">
+      <div className="grid grid-cols-4 gap-2 mb-8">
         {quickActions.map((action) => (
           <button
             key={action.id}
