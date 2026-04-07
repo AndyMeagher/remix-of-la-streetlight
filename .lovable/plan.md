@@ -1,26 +1,29 @@
 
 
-# Fix: Remove Public Access to Device Tokens Table
+# Fix: Deploy register-device-token Edge Function
 
 ## Problem
-The `device_tokens` table has public INSERT and UPDATE policies, allowing anyone to write or overwrite any device's push token. Without authentication, there's no way to scope these policies to "own device only" at the database level.
+The edge function file exists but was never successfully deployed — likely because the CORS import (`https://esm.sh/@supabase/supabase-js@2.49.4/cors`) doesn't resolve on esm.sh, causing a deploy error.
 
 ## Solution
-Move token registration behind a backend function. The client calls the function with its device info; the function uses the service role to upsert. All public RLS policies on `device_tokens` are removed — the table becomes service-role-only.
+Replace the broken CORS import with inline CORS headers (the standard pattern), then explicitly deploy the function.
 
 ## Steps
 
-### 1. Create edge function `register-device-token`
-A simple function that accepts `{ device_id, platform, token, p256dh?, auth? }` in the request body and upserts into `device_tokens` using the service role client. Validates input (required fields, platform must be `ios` or `web`).
+### 1. Update `supabase/functions/register-device-token/index.ts`
+- Remove the `corsHeaders` import from `esm.sh`
+- Define `corsHeaders` inline:
+```typescript
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+```
+- Keep everything else unchanged
 
-### 2. Migration: drop all public policies on `device_tokens`
-Remove the remaining INSERT and UPDATE policies. The table keeps RLS enabled but has zero public policies — only service-role access works.
+### 2. Deploy the function
+Use the deploy tool to push `register-device-token` to the edge runtime.
 
-### 3. Update `src/hooks/usePushNotifications.ts`
-Replace the two direct `supabase.from("device_tokens").upsert(...)` calls (one for iOS native at line 68, one for web push later in the file) with `supabase.functions.invoke("register-device-token", { body: {...} })`.
-
-## Files changed
-- **New**: `supabase/functions/register-device-token/index.ts`
-- **New migration**: drop public INSERT/UPDATE policies on `device_tokens`
-- **Modified**: `src/hooks/usePushNotifications.ts` — use edge function instead of direct table writes
+### Files changed
+- **Modified**: `supabase/functions/register-device-token/index.ts` — fix CORS import
 
