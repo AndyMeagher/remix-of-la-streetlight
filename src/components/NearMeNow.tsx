@@ -6,7 +6,7 @@ import type { Resource } from "./ResourceCard";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 
-type CategoryFilter = "all" | "shelter" | "food" | "medical";
+type CategoryFilter = "all" | "shelter" | "food" | "medical" | "dropin";
 
 interface NearbyResource extends Resource {
   calculatedDistance: number;
@@ -70,7 +70,7 @@ const NearMeNow = () => {
       }
 
       const allResources = resources
-        .filter((r) => ["shelter", "food", "medical"].includes(r.category))
+        .filter((r) => ["shelter", "food", "medical", "dropin"].includes(r.category))
         .filter((r) => r.lat != null && r.lng != null);
 
       const nearby: NearbyResource[] = allResources
@@ -105,6 +105,7 @@ const NearMeNow = () => {
     if (cat === "shelter") return "Shelter";
     if (cat === "food") return "Food";
     if (cat === "medical") return "Medical";
+    if (cat === "dropin") return "Drop-in";
     return cat;
   };
 
@@ -180,7 +181,7 @@ const NearMeNow = () => {
         <div className="flex items-center gap-1 mr-1">
           <Filter className="w-3.5 h-3.5 text-muted-foreground" />
         </div>
-        {(["all", "shelter", "food", "medical"] as CategoryFilter[]).map((cat) => (
+        {(["all", "shelter", "food", "medical", "dropin"] as CategoryFilter[]).map((cat) => (
           <button
             key={cat}
             onClick={() => setCategoryFilter(cat)}

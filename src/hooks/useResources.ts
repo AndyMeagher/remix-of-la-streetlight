@@ -70,6 +70,7 @@ export function useResources() {
   const medicalResources = useMemo(() => resources.filter((r) => r.category === "medical"), [resources]);
   const transitionalResources = useMemo(() => resources.filter((r) => r.category === "transitional"), [resources]);
   const traffickingResources = useMemo(() => resources.filter((r) => r.category === "trafficking"), [resources]);
+  const dropinResources = useMemo(() => resources.filter((r) => r.category === "dropin"), [resources]);
 
   return {
     loading,
@@ -79,5 +80,6 @@ export function useResources() {
     medicalResources,
     transitionalResources,
     traffickingResources,
+    dropinResources,
   };
 }
