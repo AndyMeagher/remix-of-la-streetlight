@@ -65,16 +65,13 @@ export function usePushNotifications() {
         const handles = await Promise.all([
           PushNotifications.addListener("registration", async (token) => {
             const deviceId = getDeviceId();
-            await supabase.from("device_tokens").upsert(
-              {
+            await supabase.functions.invoke("register-device-token", {
+              body: {
                 device_id: deviceId,
                 platform: "ios",
                 token: token.value,
-                p256dh: null,
-                auth: null,
               },
-              { onConflict: "device_id" },
-            );
+            });
             setIsSubscribed(true);
           }),
 
