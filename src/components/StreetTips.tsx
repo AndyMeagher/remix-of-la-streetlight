@@ -23,7 +23,9 @@ const StreetTips = () => {
   const { data: reports = [] } = useQuery({
     queryKey: ["tip_reports"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("tip_reports").select("tip_id, device_id");
+      const { data, error } = await supabase
+        .from("tip_reports")
+        .select("tip_id, device_id");
       if (error) throw error;
       return data;
     },
@@ -110,7 +112,7 @@ const StreetTips = () => {
           placeholder="Share a tip that could help someone..."
           maxLength={500}
           rows={3}
-          className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+          className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
         />
         <div className="flex items-center justify-between mt-2">
           <div className="flex gap-1.5 flex-wrap">
@@ -137,7 +139,9 @@ const StreetTips = () => {
             Post
           </button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1">{newTip.length}/500</p>
+        <p className="text-[10px] text-muted-foreground mt-1">
+          {newTip.length}/500
+        </p>
       </div>
 
       {/* Filter */}
@@ -159,7 +163,9 @@ const StreetTips = () => {
 
       {/* Tips list */}
       {isLoading ? (
-        <div className="text-sm text-muted-foreground text-center py-8">Loading tips...</div>
+        <div className="text-sm text-muted-foreground text-center py-8">
+          Loading tips...
+        </div>
       ) : visibleTips.length === 0 ? (
         <div className="text-sm text-muted-foreground text-center py-8">
           No tips yet. Be the first to share!
@@ -178,7 +184,11 @@ const StreetTips = () => {
                     onClick={() => reportTip.mutate(tip.id)}
                     disabled={myReports.has(tip.id) || reportTip.isPending}
                     className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors disabled:opacity-40"
-                    title={myReports.has(tip.id) ? "Already reported" : "Report as inappropriate"}
+                    title={
+                      myReports.has(tip.id)
+                        ? "Already reported"
+                        : "Report as inappropriate"
+                    }
                   >
                     <Flag className="w-3 h-3" />
                     {myReports.has(tip.id) ? "Reported" : "Report"}
