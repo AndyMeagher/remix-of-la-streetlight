@@ -117,6 +117,7 @@ export type Database = {
           open_days: number[] | null
           open_time: string | null
           phone: string | null
+          schedule: Json | null
           tags: string[] | null
           website: string | null
         }
@@ -135,6 +136,7 @@ export type Database = {
           open_days?: number[] | null
           open_time?: string | null
           phone?: string | null
+          schedule?: Json | null
           tags?: string[] | null
           website?: string | null
         }
@@ -153,6 +155,7 @@ export type Database = {
           open_days?: number[] | null
           open_time?: string | null
           phone?: string | null
+          schedule?: Json | null
           tags?: string[] | null
           website?: string | null
         }
