@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { isResourceOpen } from "@/lib/isOpenLA";
+import { isResourceOpen, type ScheduleBlock } from "@/lib/isOpenLA";
 import type { Resource } from "@/components/ResourceCard";
 
 interface DbResource {
@@ -19,6 +19,7 @@ interface DbResource {
   close_time: string | null;
   open_days: number[] | null;
   is_always_open: boolean;
+  schedule: ScheduleBlock[] | null;
 }
 
 function toResource(db: DbResource): Resource & { lat: number | null; lng: number | null; category: string } {
@@ -48,7 +49,7 @@ export function useResources() {
       .from("resources")
       .select("*")
       .then(({ data }) => {
-        if (data) setDbResources(data as DbResource[]);
+        if (data) setDbResources(data as unknown as DbResource[]);
         setLoading(false);
       });
   }, []);
