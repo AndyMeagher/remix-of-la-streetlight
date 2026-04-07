@@ -49,7 +49,7 @@ export function useResources() {
       .from("resources")
       .select("*")
       .then(({ data }) => {
-        if (data) setDbResources(data as DbResource[]);
+        if (data) setDbResources(data as unknown as DbResource[]);
         setLoading(false);
       });
   }, []);
