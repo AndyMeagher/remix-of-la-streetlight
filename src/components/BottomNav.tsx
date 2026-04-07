@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Bed, UtensilsCrossed, Heart, ShieldAlert, Building2, MessageSquare, HandHeart } from "lucide-react";
+import { Home, Bed, UtensilsCrossed, Heart, ShieldAlert, Building2, MessageSquare, HandHeart, Coffee } from "lucide-react";
 
 interface BottomNavProps {
   activeTab: string;
@@ -11,6 +11,7 @@ const tabs = [
   { id: "shelters", label: "Shelters", icon: Bed },
   { id: "transitional", label: "AB12", icon: Building2 },
   { id: "food", label: "Food", icon: UtensilsCrossed },
+  { id: "dropin", label: "Drop-in", icon: Coffee },
   { id: "tips", label: "Tips", icon: MessageSquare },
   { id: "medical", label: "Medical", icon: Heart },
   { id: "getout", label: "Safe Choices", icon: HandHeart },
