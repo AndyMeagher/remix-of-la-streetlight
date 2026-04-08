@@ -380,12 +380,11 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // TEMP: delivery window check disabled for testing
-    // if (!isDeliveryWindow()) {
-    //   return new Response(JSON.stringify({ message: "Outside delivery window" }), {
-    //     headers: { ...corsHeaders, "Content-Type": "application/json" },
-    //   });
-    // }
+    if (!isDeliveryWindow()) {
+      return new Response(JSON.stringify({ message: "Outside delivery window" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -491,18 +490,25 @@ Deno.serve(async (req) => {
       const weeklyCount = recentHistory?.length || 0;
       console.log(`  Weekly count: ${weeklyCount}, last sent: ${recentHistory?.[0]?.sent_at ?? "never"}`);
 
-      // TEMP: All rate limiting and probabilistic checks disabled for testing
       // Max 5 per week
-      // if (weeklyCount >= 5) continue;
+      if (weeklyCount >= 5) continue;
 
       // At least 24h between sends
-      // if (recentHistory && recentHistory.length > 0) { ... }
+      if (recentHistory && recentHistory.length > 0) {
+        const lastSent = new Date(recentHistory[0].sent_at);
+        const hoursSince = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
+        if (hoursSince < 24) continue;
+      }
 
       // Also check legacy field for web devices
-      // if (device.last_notified_at) { ... }
+      if (device.last_notified_at) {
+        const lastSent = new Date(device.last_notified_at);
+        const hoursSince = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
+        if (hoursSince < 24) continue;
+      }
 
-      // Probabilistic send
-      // if (Math.random() > 0.12) continue;
+      // Probabilistic send: ~0.20 chance per cron run
+      if (Math.random() > 0.20) continue;
 
       // Get recent message indices (last 7 days) to avoid repeats
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
