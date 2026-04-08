@@ -8,13 +8,16 @@ import NotFound from "./pages/NotFound.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Support from "./pages/Support.tsx";
 import { StatusBar } from "@capacitor/status-bar";
+import { Capacitor } from "@capacitor/core";
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
-    StatusBar.setOverlaysWebView({ overlay: false });
+    if (Capacitor.isNativePlatform()) {
+      StatusBar.setOverlaysWebView({ overlay: false });
+    }
   }, []);
 
   return (
