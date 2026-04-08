@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { device_id, platform, token, p256dh, auth } = body;
+    const { device_id, platform, token, p256dh, auth, endpoint } = body;
 
     // Validate required fields
     if (!device_id || typeof device_id !== "string" || device_id.length > 100) {
@@ -27,35 +27,84 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    if (!token || typeof token !== "string" || token.length > 4096) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { error } = await supabaseAdmin.from("device_tokens").upsert(
-      {
-        device_id,
-        platform,
-        token,
-        p256dh: p256dh ?? null,
-        auth: auth ?? null,
-      },
-      { onConflict: "device_id" },
-    );
+    if (platform === "ios") {
+      // iOS: token is the APNs device token
+      if (!token || typeof token !== "string" || token.length > 4096) {
+        return new Response(
+          JSON.stringify({ error: "Invalid token" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
 
-    if (error) {
-      console.error("Upsert error:", error);
-      return new Response(
-        JSON.stringify({ error: "Failed to register token" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      const { error } = await supabaseAdmin.from("device_tokens").upsert(
+        { device_id, platform, token, p256dh: null, auth: null },
+        { onConflict: "device_id" },
       );
+
+      if (error) {
+        console.error("Upsert device_tokens error:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to register token" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    } else {
+      // Web: needs endpoint, p256dh, auth for web push
+      const webEndpoint = endpoint || token;
+      if (!webEndpoint || typeof webEndpoint !== "string" || webEndpoint.length > 4096) {
+        return new Response(
+          JSON.stringify({ error: "Invalid endpoint" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (!p256dh || typeof p256dh !== "string") {
+        return new Response(
+          JSON.stringify({ error: "Invalid p256dh" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (!auth || typeof auth !== "string") {
+        return new Response(
+          JSON.stringify({ error: "Invalid auth" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      // Upsert into push_subscriptions (web push credentials)
+      const { error: psError } = await supabaseAdmin.from("push_subscriptions").upsert(
+        {
+          device_id,
+          endpoint: webEndpoint,
+          p256dh,
+          auth,
+        },
+        { onConflict: "device_id" },
+      );
+
+      if (psError) {
+        console.error("Upsert push_subscriptions error:", psError);
+        return new Response(
+          JSON.stringify({ error: "Failed to register subscription" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      // Also upsert into device_tokens for unified tracking
+      const { error: dtError } = await supabaseAdmin.from("device_tokens").upsert(
+        { device_id, platform: "web", token: webEndpoint, p256dh, auth },
+        { onConflict: "device_id" },
+      );
+
+      if (dtError) {
+        console.error("Upsert device_tokens error:", dtError);
+        // Non-fatal — push_subscriptions is the primary web table
+      }
     }
 
     return new Response(

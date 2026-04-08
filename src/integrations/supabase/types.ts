@@ -166,6 +166,7 @@ export type Database = {
           category: string
           content: string
           created_at: string
+          device_id: string | null
           id: string
           upvotes: number
         }
@@ -173,6 +174,7 @@ export type Database = {
           category?: string
           content: string
           created_at?: string
+          device_id?: string | null
           id?: string
           upvotes?: number
         }
@@ -180,6 +182,7 @@ export type Database = {
           category?: string
           content?: string
           created_at?: string
+          device_id?: string | null
           id?: string
           upvotes?: number
         }
