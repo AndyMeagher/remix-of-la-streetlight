@@ -58,7 +58,7 @@ function isDeliveryWindow(): boolean {
   const now = new Date();
   const ptOffset = -7;
   const ptHour = (now.getUTCHours() + ptOffset + 24) % 24;
-  return ptHour >= 10 && ptHour <= 20;
+  return ptHour >= 10 && ptHour < 22;
 }
 
 // ─── Base64url helpers ───
