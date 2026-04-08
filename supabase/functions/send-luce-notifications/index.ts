@@ -458,6 +458,8 @@ Deno.serve(async (req) => {
       }
     }
 
+    console.log(`Found ${allDevices.length} total devices`);
+
     if (allDevices.length === 0) {
       return new Response(JSON.stringify({ message: "No subscribers" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -471,9 +473,13 @@ Deno.serve(async (req) => {
       if (body?.bundleId) bundleId = body.bundleId;
     } catch { /* no body, use default */ }
 
+    console.log(`Using bundle ID: ${bundleId}`);
+
     let sent = 0;
 
     for (const device of allDevices) {
+      console.log(`Processing device ${device.device_id} (platform: ${device.platform}, token: ${device.token.slice(0, 20)}...)`);
+
       // Get rate-limiting info from notification_history
       const { data: recentHistory } = await supabase
         .from("notification_history")
@@ -483,6 +489,7 @@ Deno.serve(async (req) => {
         .order("sent_at", { ascending: false });
 
       const weeklyCount = recentHistory?.length || 0;
+      console.log(`  Weekly count: ${weeklyCount}, last sent: ${recentHistory?.[0]?.sent_at ?? "never"}`);
 
       // TEMP: All rate limiting and probabilistic checks disabled for testing
       // Max 5 per week
@@ -509,6 +516,8 @@ Deno.serve(async (req) => {
       const messageIndex = pickMessageIndex(recentIndices);
       const message = MESSAGES[messageIndex];
 
+      console.log(`  Sending message index ${messageIndex}: "${message.body.slice(0, 40)}..."`);
+
       const payload = JSON.stringify({
         title: "Luce 💛",
         body: message.body,
@@ -519,32 +528,41 @@ Deno.serve(async (req) => {
 
       try {
         if (device.platform === "ios") {
+          console.log(`  Sending APNs push to token ${device.token.slice(0, 20)}...`);
           result = await sendApnsPush(device.token, payload, bundleId);
+          console.log(`  APNs result: status=${result.status}, expired=${result.expired}`);
         } else {
           // Web push
           if (!device.p256dh || !device.auth) {
-            console.warn(`Skipping web device ${device.device_id}: missing p256dh or auth`);
+            console.warn(`  Skipping web device ${device.device_id}: missing p256dh or auth`);
             continue;
           }
+          console.log(`  Sending web push to endpoint ${device.token.slice(0, 40)}...`);
           result = await sendWebPush(
             { endpoint: device.token, p256dh: device.p256dh, auth: device.auth },
             payload
           );
+          console.log(`  Web push result: status=${result.status}, expired=${result.expired}`);
         }
       } catch (err) {
-        console.error(`Failed to send to ${device.device_id} (${device.platform}):`, err);
+        console.error(`  Failed to send to ${device.device_id} (${device.platform}):`, err);
         continue;
       }
 
       if (result.expired) {
-        // Remove expired token
+        console.log(`  Token expired, removing device ${device.device_id}`);
         await supabase.from("device_tokens").delete().eq("device_id", device.device_id);
-        // Also clean up legacy table if applicable
         await supabase.from("push_subscriptions").delete().eq("device_id", device.device_id);
         continue;
       }
 
+      if (result.status && result.status >= 400) {
+        console.error(`  Non-success status ${result.status} for device ${device.device_id}, not recording history`);
+        continue;
+      }
+
       // Record history
+      console.log(`  Recording notification history for device ${device.device_id}`);
       await supabase.from("notification_history").insert({
         device_id: device.device_id,
         message_index: messageIndex,
@@ -565,6 +583,7 @@ Deno.serve(async (req) => {
       sent++;
     }
 
+    console.log(`Done. Sent ${sent} notifications.`);
     return new Response(JSON.stringify({ message: `Sent ${sent} notifications` }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
