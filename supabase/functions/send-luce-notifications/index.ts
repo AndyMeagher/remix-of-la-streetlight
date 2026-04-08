@@ -465,7 +465,7 @@ Deno.serve(async (req) => {
     }
 
     // Get the iOS bundle ID from request body or use default
-    let bundleId = "app.lastreetlight.luce";
+    let bundleId = "com.lastreetlight.lastreetlight";
     try {
       const body = await req.json();
       if (body?.bundleId) bundleId = body.bundleId;
