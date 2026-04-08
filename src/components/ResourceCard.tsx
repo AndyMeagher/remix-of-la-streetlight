@@ -1,5 +1,7 @@
 import { MapPin, Clock, Phone, ExternalLink } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 
 export interface Resource {
   id: string;
@@ -61,16 +63,20 @@ const ResourceCard = ({ resource, icon: Icon }: ResourceCardProps) => {
             </a>
           )}
           {resource.website && (
-            <a
-              href={resource.website}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
               className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
-              onClick={(e) => e.stopPropagation()}
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (Capacitor.isNativePlatform()) {
+                  await Browser.open({ url: resource.website! });
+                } else {
+                  window.open(resource.website, "_blank");
+                }
+              }}
             >
               <ExternalLink className="w-3 h-3" />
               Website
-            </a>
+            </button>
           )}
         </div>
       </div>

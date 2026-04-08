@@ -15,6 +15,7 @@ import { useResources } from "../hooks/useResources";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
+  const [searchQuery, setSearchQuery] = useState("");
   const { loading, shelterResources, foodResources, medicalResources, transitionalResources, traffickingResources, dropinResources, resources } = useResources();
 
   const quickActions = [
@@ -65,6 +66,8 @@ const Index = () => {
         <input
           type="text"
           placeholder="Search resources..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-secondary border border-border rounded-lg pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
@@ -86,22 +89,48 @@ const Index = () => {
         ))}
       </div>
 
-      {/* Nearby Open */}
-      <h2 className="font-display text-base text-foreground mb-3">Open Now Nearby</h2>
-      {loading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 text-primary animate-spin" />
-        </div>
+      {/* Nearby Open / Search Results */}
+      {searchQuery.trim() ? (
+        <>
+          <h2 className="font-display text-base text-foreground mb-3">Search Results</h2>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            </div>
+          ) : (() => {
+            const q = searchQuery.toLowerCase();
+            const results = [...shelterResources, ...transitionalResources, ...foodResources, ...dropinResources, ...medicalResources, ...traffickingResources]
+              .filter((r) => r.name.toLowerCase().includes(q) || r.tags?.some((t) => t.toLowerCase().includes(q)));
+            return results.length > 0 ? (
+              <div className="space-y-2">
+                {results.map((resource) => (
+                  <ResourceCard key={resource.id} resource={resource} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">No resources found for "{searchQuery}"</p>
+            );
+          })()}
+        </>
       ) : (
-        <div className="space-y-2">
-          {[...shelterResources, ...transitionalResources, ...foodResources, ...dropinResources, ...medicalResources]
-            .filter((r) => r.isOpen)
-            .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance))
-            .slice(0, 4)
-            .map((resource) => (
-              <ResourceCard key={resource.id} resource={resource} />
-            ))}
-        </div>
+        <>
+          <h2 className="font-display text-base text-foreground mb-3">Open Now Nearby</h2>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {[...shelterResources, ...transitionalResources, ...foodResources, ...dropinResources, ...medicalResources]
+                .filter((r) => r.isOpen)
+                .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance))
+                .slice(0, 4)
+                .map((resource) => (
+                  <ResourceCard key={resource.id} resource={resource} />
+                ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
