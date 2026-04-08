@@ -355,10 +355,11 @@ async function sendApnsPush(
         if (parsed.reason === "BadDeviceToken" || parsed.reason === "Unregistered") {
           return { expired: true };
         }
-      } catch { /* ignore parse error */ }
+        console.error("APNs 400 unexpected reason:", parsed.reason, body);
+      } catch { console.error("APNs 400 non-JSON body:", body); }
+      return { expired: false, status: 400 };
     }
 
-    await response.text();
     return { expired: false, status: response.status };
   } catch (err) {
     console.error("APNs send error:", err);
