@@ -73,9 +73,13 @@ const StreetTips = () => {
     mutationFn: async () => {
       const trimmed = newTip.trim();
       if (!trimmed || trimmed.length < 5) throw new Error("Too short");
-      const { error } = await supabase
-        .from("street_tips")
-        .insert({ content: trimmed.slice(0, 500), category });
+      const { error } = await supabase.functions.invoke("submit-tip", {
+        body: {
+          content: trimmed.slice(0, 500),
+          category,
+          device_id: getDeviceId(),
+        },
+      });
       if (error) throw error;
     },
     onSuccess: () => {

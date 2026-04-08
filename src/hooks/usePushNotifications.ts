@@ -177,15 +177,15 @@ export function usePushNotifications() {
       const subJson = sub.toJSON();
       const deviceId = getDeviceId();
 
-      await supabase.from("push_subscriptions").upsert(
-        {
+      await supabase.functions.invoke("register-device-token", {
+        body: {
           device_id: deviceId,
+          platform: "web",
           endpoint: subJson.endpoint!,
           p256dh: subJson.keys!.p256dh!,
           auth: subJson.keys!.auth!,
         },
-        { onConflict: "device_id" },
-      );
+      });
 
       setIsSubscribed(true);
       return true;
