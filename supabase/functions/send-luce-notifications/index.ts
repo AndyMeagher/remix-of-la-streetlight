@@ -37,6 +37,8 @@ const MESSAGES = [
   { body: "Real talk helps real people. Leave a tip if you've got one.", type: "community" },
   { body: "Sometimes what we've learned the hard way can light the path for someone else.", type: "community" },
   { body: "You've made it through some things... someone else is still in it. Your words could help.", type: "community" },
+  { body: "I hope you find your people.", type: "encouragement" },
+  { body: "You've been through a lot.. It makes sense that trusting people is hard.", type: "encouragement" },
 ];
 
 const ENCOURAGEMENT_INDICES = MESSAGES.map((m, i) => m.type === "encouragement" ? i : -1).filter(i => i >= 0);
