@@ -509,8 +509,8 @@ Deno.serve(async (req) => {
         if (hoursSince < 24) continue;
       }
 
-      // Probabilistic send: ~0.20 chance per cron run
-      if (Math.random() > 0.20) continue;
+      // Probabilistic send: ~0.40 chance per cron run (40%)
+      if (Math.random() > 0.40) continue;
 
       // Get recent message indices (last 7 days) to avoid repeats
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
