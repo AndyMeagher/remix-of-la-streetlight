@@ -37,6 +37,8 @@ const MESSAGES = [
   { body: "Real talk helps real people. Leave a tip if you've got one.", type: "community" },
   { body: "Sometimes what we've learned the hard way can light the path for someone else.", type: "community" },
   { body: "You've made it through some things... someone else is still in it. Your words could help.", type: "community" },
+  { body: "I hope you find your people.", type: "encouragement" },
+  { body: "You've been through a lot.. It makes sense that trusting people is hard.", type: "encouragement" },
 ];
 
 const ENCOURAGEMENT_INDICES = MESSAGES.map((m, i) => m.type === "encouragement" ? i : -1).filter(i => i >= 0);
@@ -58,7 +60,7 @@ function isDeliveryWindow(): boolean {
   const now = new Date();
   const ptOffset = -7;
   const ptHour = (now.getUTCHours() + ptOffset + 24) % 24;
-  return ptHour >= 10 && ptHour <= 20;
+  return ptHour >= 10 && ptHour < 22;
 }
 
 // ─── Base64url helpers ───
@@ -586,8 +588,8 @@ Deno.serve(async (req) => {
         if (hoursSince < 24) continue;
       }
 
-      // Probabilistic send: ~0.20 chance per cron run
-      if (Math.random() > 0.20) continue;
+      // Probabilistic send: ~0.40 chance per cron run (40%)
+      if (Math.random() > 0.40) continue;
 
       // Get recent message indices (last 7 days) to avoid repeats
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
