@@ -56,19 +56,30 @@ export function usePushNotifications() {
   }, []);
 
   useEffect(() => {
+    console.log("[PushNotif] isNative:", isNative, "platform:", Capacitor.getPlatform());
     if (isNative) {
       let cancelled = false;
       let listenerHandles: Array<{ remove: () => Promise<void> }> = [];
 
       (async () => {
+        console.log("[PushNotif] setting up listeners");
         // Register listeners before checking permission so we never miss the registration event
         const handles = await Promise.all([
           PushNotifications.addListener("registration", async (token) => {
+            console.log("[PushNotif] registration token received:", token.value.slice(0, 20));
+            const platform = Capacitor.getPlatform();
+            // On Android, Firebase fires this event automatically on startup before the user
+            // has granted POST_NOTIFICATIONS permission. Skip until they actually grant it.
+            if (platform === "android") {
+              const status = await PushNotifications.checkPermissions();
+              console.log("[PushNotif] android display permission on registration:", status.receive);
+              if (status.receive !== "granted") return;
+            }
             const deviceId = getDeviceId();
             await supabase.functions.invoke("register-device-token", {
               body: {
                 device_id: deviceId,
-                platform: "ios",
+                platform,
                 token: token.value,
               },
             });
@@ -76,7 +87,7 @@ export function usePushNotifications() {
           }),
 
           PushNotifications.addListener("registrationError", (err) => {
-            console.error("Native push registration error:", err);
+            console.error("[PushNotif] registration error:", err);
           }),
 
           PushNotifications.addListener(
@@ -104,12 +115,18 @@ export function usePushNotifications() {
         }
         listenerHandles = handles;
 
-        // If permission already granted, re-register to refresh the APNs token
+        // If permission already granted, re-register to refresh the token
+        console.log("[PushNotif] checking permissions");
         const status = await PushNotifications.checkPermissions();
+        console.log("[PushNotif] permission status:", status.receive);
         const perm = mapNativePermission(status.receive);
         setPermission(perm);
         if (perm === "granted") {
+          console.log("[PushNotif] permission granted, calling register()");
           await PushNotifications.register();
+          console.log("[PushNotif] register() called");
+        } else {
+          console.log("[PushNotif] permission not granted, skipping register(). mapped perm:", perm);
         }
       })();
 

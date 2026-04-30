@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "372664281991",
+    "project_id": "lastreetlight-461db",
+    "storage_bucket": "lastreetlight-461db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:372664281991:android:d89dffd610572ce8a58122",
+        "android_client_info": {
+          "package_name": "com.lastreetlight.lastreetlight"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmEYE4tCI-f4f3MLoB6IWQHpumJ4lp-10"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

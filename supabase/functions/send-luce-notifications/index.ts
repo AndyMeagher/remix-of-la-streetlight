@@ -367,6 +367,85 @@ async function sendApnsPush(
   }
 }
 
+// ─── Firebase Cloud Messaging (Android) ───
+
+function pemToBytes(pem: string): ArrayBuffer {
+  const base64 = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\s/g, "");
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+async function sendFcmPush(
+  token: string,
+  payload: string,
+): Promise<{ expired: boolean; status?: number }> {
+  const serviceAccountJson = Deno.env.get("FCM_SERVICE_ACCOUNT_JSON")!;
+  const sa = JSON.parse(serviceAccountJson);
+
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64UrlEncode(new TextEncoder().encode(JSON.stringify({ alg: "RS256", typ: "JWT" })));
+  const claims = base64UrlEncode(new TextEncoder().encode(JSON.stringify({
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  })));
+  const sigInput = `${header}.${claims}`;
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    pemToBytes(sa.private_key),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sigBytes = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", cryptoKey, new TextEncoder().encode(sigInput));
+  const jwt = `${sigInput}.${base64UrlEncode(new Uint8Array(sigBytes))}`;
+
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+  });
+  const { access_token } = await tokenRes.json();
+
+  const msg = JSON.parse(payload);
+  const fcmRes = await fetch(
+    `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: {
+          token,
+          notification: { title: msg.title, body: msg.body },
+          data: { type: msg.type ?? "encouragement" },
+          android: {
+            notification: {
+              icon: "ic_launcher",
+              color: "#FFD700",
+              channel_id: "luce_notifications",
+            },
+          },
+        },
+      }),
+    },
+  );
+
+  const status = fcmRes.status;
+  if (status === 404 || status === 410) return { expired: true, status };
+  return { expired: false, status };
+}
+
 // ─── Main handler ───
 
 Deno.serve(async (req) => {
@@ -411,7 +490,7 @@ Deno.serve(async (req) => {
     // Build unified list
     interface DeviceEntry {
       device_id: string;
-      platform: "web" | "ios";
+      platform: "web" | "ios" | "android";
       token: string;
       p256dh: string | null;
       auth: string | null;
@@ -537,6 +616,10 @@ Deno.serve(async (req) => {
           console.log(`  Sending APNs push to token ${device.token.slice(0, 20)}...`);
           result = await sendApnsPush(device.token, payload, bundleId);
           console.log(`  APNs result: status=${result.status}, expired=${result.expired}`);
+        } else if (device.platform === "android") {
+          console.log(`  Sending FCM push to token ${device.token.slice(0, 20)}...`);
+          result = await sendFcmPush(device.token, payload);
+          console.log(`  FCM result: status=${result.status}, expired=${result.expired}`);
         } else {
           // Web push
           if (!device.p256dh || !device.auth) {

@@ -18,13 +18,21 @@ const LuceNotificationPrompt = () => {
 
   // Subscription prompt visibility logic
   useEffect(() => {
-    if (isSubscribed || permission === "denied") return;
+    console.log("[NotifPrompt] effect ran — isSubscribed:", isSubscribed, "permission:", permission);
+    if (isSubscribed || permission === "denied") {
+      console.log("[NotifPrompt] blocked by isSubscribed or permission denied");
+      return;
+    }
     const dismissed = localStorage.getItem("luce-notif-dismissed");
     if (dismissed) {
       const dismissedAt = parseInt(dismissed, 10);
+      const hoursAgo = (Date.now() - dismissedAt) / (1000 * 60 * 60);
+      console.log("[NotifPrompt] dismissed", hoursAgo.toFixed(1), "hours ago");
       if (Date.now() - dismissedAt < 3 * 24 * 60 * 60 * 1000) return;
     }
+    console.log("[NotifPrompt] starting 8s timer");
     const timer = setTimeout(() => {
+      console.log("[NotifPrompt] timer fired, showing prompt");
       setVisible(true);
       playLuceSound();
     }, 8000);

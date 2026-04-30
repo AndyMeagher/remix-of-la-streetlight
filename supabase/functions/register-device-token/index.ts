@@ -21,9 +21,9 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    if (!platform || !["ios", "web"].includes(platform)) {
+    if (!platform || !["ios", "android", "web"].includes(platform)) {
       return new Response(
-        JSON.stringify({ error: "platform must be 'ios' or 'web'" }),
+        JSON.stringify({ error: "platform must be 'ios', 'android', or 'web'" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    if (platform === "ios") {
+    if (platform === "ios" || platform === "android") {
       // iOS: token is the APNs device token
       if (!token || typeof token !== "string" || token.length > 4096) {
         return new Response(
