@@ -39,6 +39,17 @@ function mapNativePermission(status: string): NotificationPermission {
   return "default";
 }
 
+async function registerTokenWithSupabase(token: string) {
+  const { error } = await supabase.functions.invoke("register-device-token", {
+    body: {
+      device_id: getDeviceId(),
+      platform: Capacitor.getPlatform(),
+      token,
+    },
+  });
+  if (error) console.error("[PushNotif] Supabase registration error:", error);
+}
+
 export function usePushNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>(
     isNative
@@ -47,7 +58,11 @@ export function usePushNotifications() {
         ? Notification.permission
         : "default",
   );
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  // Initialize from localStorage so returning opted-in users start as subscribed
+  // without needing to wait for the FCM registration event.
+  const [isSubscribed, setIsSubscribed] = useState(
+    localStorage.getItem("luce-notif-opted-in") === "true",
+  );
   const [foregroundNotification, setForegroundNotification] =
     useState<ForegroundNotification | null>(null);
 
@@ -57,89 +72,71 @@ export function usePushNotifications() {
 
   useEffect(() => {
     console.log("[PushNotif] isNative:", isNative, "platform:", Capacitor.getPlatform());
-    if (isNative) {
-      let cancelled = false;
-      let listenerHandles: Array<{ remove: () => Promise<void> }> = [];
-
-      (async () => {
-        console.log("[PushNotif] setting up listeners");
-        // Register listeners before checking permission so we never miss the registration event
-        const handles = await Promise.all([
-          PushNotifications.addListener("registration", async (token) => {
-            console.log("[PushNotif] registration token received:", token.value.slice(0, 20));
-            const platform = Capacitor.getPlatform();
-            // On Android, Firebase fires this event automatically on startup before the user
-            // has granted POST_NOTIFICATIONS permission. Skip until they actually grant it.
-            if (platform === "android") {
-              const status = await PushNotifications.checkPermissions();
-              console.log("[PushNotif] android display permission on registration:", status.receive);
-              if (status.receive !== "granted") return;
-            }
-            const deviceId = getDeviceId();
-            await supabase.functions.invoke("register-device-token", {
-              body: {
-                device_id: deviceId,
-                platform,
-                token: token.value,
-              },
-            });
-            setIsSubscribed(true);
-          }),
-
-          PushNotifications.addListener("registrationError", (err) => {
-            console.error("[PushNotif] registration error:", err);
-          }),
-
-          PushNotifications.addListener(
-            "pushNotificationReceived",
-            (notification) => {
-              // App is foregrounded — system won't show a banner, so we display in-app
-              setForegroundNotification({
-                title: notification.title ?? "Luce 💛",
-                body: notification.body ?? "",
-              });
-            },
-          ),
-
-          PushNotifications.addListener(
-            "pushNotificationActionPerformed",
-            () => {
-              // User tapped a background notification — nothing extra needed for now
-            },
-          ),
-        ]);
-
-        if (cancelled) {
-          handles.forEach((h) => h.remove());
-          return;
-        }
-        listenerHandles = handles;
-
-        // If permission already granted, re-register to refresh the token
-        console.log("[PushNotif] checking permissions");
-        const status = await PushNotifications.checkPermissions();
-        console.log("[PushNotif] permission status:", status.receive);
-        const perm = mapNativePermission(status.receive);
-        setPermission(perm);
-        if (perm === "granted") {
-          console.log("[PushNotif] permission granted, calling register()");
-          await PushNotifications.register();
-          console.log("[PushNotif] register() called");
-        } else {
-          console.log("[PushNotif] permission not granted, skipping register(). mapped perm:", perm);
-        }
-      })();
-
-      return () => {
-        cancelled = true;
-        listenerHandles.forEach((h) => h.remove());
-      };
-    } else {
+    if (!isNative) {
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/sw.js").catch(console.error);
       }
       checkWebSubscription();
+      return;
     }
+
+    let cancelled = false;
+    let listenerHandles: Array<{ remove: () => Promise<void> }> = [];
+
+    (async () => {
+      console.log("[PushNotif] setting up listeners");
+      const handles = await Promise.all([
+        // Global registration listener — handles token refresh for returning opted-in users
+        // on subsequent app launches. The initial opt-in registration is handled directly
+        // inside subscribeNative() to avoid depending on whether Firebase re-fires the event
+        // for a cached token (it may not on Android when the token hasn't changed).
+        PushNotifications.addListener("registration", async (token) => {
+          const hasOptedIn = localStorage.getItem("luce-notif-opted-in") === "true";
+          console.log("[PushNotif] global registration event — opted-in:", hasOptedIn, "token:", token.value.slice(0, 20));
+          if (!hasOptedIn) return;
+          await registerTokenWithSupabase(token.value);
+          setIsSubscribed(true);
+        }),
+
+        PushNotifications.addListener("registrationError", (err) => {
+          console.error("[PushNotif] registration error:", err);
+        }),
+
+        PushNotifications.addListener("pushNotificationReceived", (notification) => {
+          setForegroundNotification({
+            title: notification.title ?? "Luce 💛",
+            body: notification.body ?? "",
+          });
+        }),
+
+        PushNotifications.addListener("pushNotificationActionPerformed", () => {
+          // User tapped a background notification — nothing extra needed for now
+        }),
+      ]);
+
+      if (cancelled) {
+        handles.forEach((h) => h.remove());
+        return;
+      }
+      listenerHandles = handles;
+
+      console.log("[PushNotif] checking permissions");
+      const status = await PushNotifications.checkPermissions();
+      console.log("[PushNotif] permission status:", status.receive);
+      const perm = mapNativePermission(status.receive);
+      setPermission(perm);
+      // Call register() when permission is already granted (returning user) so the global
+      // listener above can refresh the FCM/APNs token with Supabase.
+      if (perm === "granted") {
+        console.log("[PushNotif] permission granted, calling register() for token refresh");
+        await PushNotifications.register();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      listenerHandles.forEach((h) => h.remove());
+    };
   }, []);
 
   async function checkWebSubscription() {
@@ -156,24 +153,56 @@ export function usePushNotifications() {
     return isNative ? subscribeNative() : subscribeWeb();
   }
 
-  async function subscribeNative() {
+  async function subscribeNative(): Promise<boolean> {
     try {
       let permStatus = await PushNotifications.checkPermissions();
       if (
         permStatus.receive === "prompt" ||
         permStatus.receive === "prompt-with-rationale"
       ) {
+        // iOS shows system dialog here. Android 12 skips this (POST_NOTIFICATIONS
+        // didn't exist yet); Android 13+ shows the system dialog.
         permStatus = await PushNotifications.requestPermissions();
       }
       const perm = mapNativePermission(permStatus.receive);
       setPermission(perm);
       if (perm !== "granted") return false;
 
-      // The "registration" listener will fire and store the token + set isSubscribed
+      localStorage.setItem("luce-notif-opted-in", "true");
+      setIsSubscribed(true);
+
+      // Set up a one-shot listener BEFORE calling register() so we're guaranteed
+      // to capture the token even if Firebase returns it synchronously from cache.
+      // On Android, Firebase may have fired onNewToken at app startup (which our
+      // global listener rejected since opted-in was false at the time), and may
+      // not re-fire if the token is unchanged — so we can't rely on the global
+      // listener to deliver the token for the initial opt-in.
+      let resolveToken!: (t: string) => void;
+      let rejectToken!: (e: Error) => void;
+      const tokenPromise = new Promise<string>((res, rej) => {
+        resolveToken = res;
+        rejectToken = rej;
+      });
+      const timeout = setTimeout(
+        () => rejectToken(new Error("FCM registration timed out")),
+        15000,
+      );
+      const handle = await PushNotifications.addListener("registration", (t) => {
+        clearTimeout(timeout);
+        resolveToken(t.value);
+      });
+
       await PushNotifications.register();
+      const token = await tokenPromise;
+      await handle.remove();
+
+      console.log("[PushNotif] subscribeNative: registering token with Supabase");
+      await registerTokenWithSupabase(token);
       return true;
     } catch (err) {
-      console.error("Native push subscription failed:", err);
+      console.error("[PushNotif] subscribeNative failed:", err);
+      localStorage.removeItem("luce-notif-opted-in");
+      setIsSubscribed(false);
       return false;
     }
   }
@@ -207,7 +236,7 @@ export function usePushNotifications() {
       setIsSubscribed(true);
       return true;
     } catch (err) {
-      console.error("Push subscription failed:", err);
+      console.error("[PushNotif] subscribeWeb failed:", err);
       return false;
     }
   }
