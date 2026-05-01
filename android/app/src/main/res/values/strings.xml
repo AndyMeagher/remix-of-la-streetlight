@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">la-street-light</string>
-    <string name="title_activity_main">la-street-light</string>
+    <string name="app_name">LA Streetlight</string>
+    <string name="title_activity_main">LA Streetlight</string>
     <string name="package_name">com.lastreetlight.lastreetlight</string>
     <string name="custom_url_scheme">com.lastreetlight.lastreetlight</string>
 </resources>
