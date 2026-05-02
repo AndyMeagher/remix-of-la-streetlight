@@ -39,7 +39,7 @@ export function isResourceOpen(resource: {
 
   // --- Schedule-based check (preferred) ---
   if (resource.schedule && resource.schedule.length > 0) {
-    const block = resource.schedule.find((b) => b.days.includes(currentDay));
+    const block = resource.schedule.find((b) => Array.isArray(b?.days) && b.days.includes(currentDay));
     if (!block) return false; // not open today
 
     const [openH, openM] = block.open.split(":").map(Number);
