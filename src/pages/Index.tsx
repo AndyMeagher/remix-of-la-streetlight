@@ -20,6 +20,12 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { loading, shelterResources, foodResources, medicalResources, transitionalResources, traffickingResources, dropinResources, resources } = useResources();
 
+  useEffect(() => {
+    processReferralIfPresent().finally(() => {
+      awardDailyOpenIfNeeded();
+    });
+  }, []);
+
   const quickActions = [
     { id: "shelters", label: "Shelters", icon: Bed, count: shelterResources.filter(r => r.isOpen).length },
     { id: "food", label: "Food", icon: UtensilsCrossed, count: foodResources.filter(r => r.isOpen).length },
