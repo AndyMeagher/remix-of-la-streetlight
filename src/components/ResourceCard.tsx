@@ -2,6 +2,7 @@ import { MapPin, Clock, Phone, ExternalLink } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
+import { awardLightPoints } from "@/hooks/useLightPoints";
 
 export interface Resource {
   id: string;
