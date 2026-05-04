@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { playLightEarnedSound, playTipSubmittedSound } from "@/lib/feedbackSounds";
 
 export type LightAction =
   | "daily_open"
@@ -66,6 +67,11 @@ export async function awardLightPoints(action: LightAction, refId?: string) {
       today_points: result.today ?? 0,
       referral_code: cache?.referral_code ?? "",
     });
+    if (action === "submit_tip") {
+      playTipSubmittedSound();
+    } else {
+      playLightEarnedSound();
+    }
   }
   return result;
 }
