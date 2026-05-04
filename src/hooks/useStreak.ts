@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getDeviceId } from "@/hooks/useLightPoints";
+import { playStreakSound } from "@/lib/feedbackSounds";
 
 interface StreakState {
   current_streak: number;
@@ -23,7 +24,11 @@ export async function bumpStreak() {
   });
   if (error) return;
   const result = data as { streak: number; last_active: string };
+  const prev = cache?.current_streak ?? 0;
   notify({ current_streak: result.streak, last_active_date: result.last_active });
+  if (result.streak > prev) {
+    playStreakSound();
+  }
 }
 
 export function useStreak() {
