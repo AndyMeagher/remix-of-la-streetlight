@@ -13,6 +13,7 @@ import LuceNotificationPrompt from "../components/LuceNotificationPrompt";
 import LuceSoundToggle from "../components/LuceSoundToggle";
 import LightPointsBadge from "../components/LightPointsBadge";
 import StreakBanner from "../components/StreakBanner";
+import FloatingStats from "../components/FloatingStats";
 import { useResources } from "../hooks/useResources";
 import { awardDailyOpenIfNeeded, processReferralIfPresent } from "../hooks/useLightPoints";
 import { bumpStreak } from "../hooks/useStreak";
@@ -177,6 +178,7 @@ const Index = () => {
       <LuceWelcome />
       <QuickExit />
       <LuceNotificationPrompt />
+      <FloatingStats />
       {activeTab === "home" && renderHome()}
       {activeTab === "nearme" && <NearMeNow />}
       {activeTab === "sos" && <SOSPanel />}
