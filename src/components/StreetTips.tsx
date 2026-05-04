@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ThumbsUp, Send, MessageSquare, Flag } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { awardLightPoints } from "@/hooks/useLightPoints";
 
 const categories = ["general", "safety", "food", "shelter", "health", "legal"];
 
@@ -85,6 +86,7 @@ const StreetTips = () => {
     onSuccess: () => {
       setNewTip("");
       queryClient.invalidateQueries({ queryKey: ["street_tips"] });
+      awardLightPoints("submit_tip");
     },
   });
 

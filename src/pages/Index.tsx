@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bed, UtensilsCrossed, Heart, Search, Building2, HandHeart, Navigation, Loader2, Coffee } from "lucide-react";
 import luceMascot from "@/assets/luce-mascot.png";
@@ -11,12 +11,20 @@ import NearMeNow from "../components/NearMeNow";
 import LuceWelcome from "../components/LuceWelcome";
 import LuceNotificationPrompt from "../components/LuceNotificationPrompt";
 import LuceSoundToggle from "../components/LuceSoundToggle";
+import LightPointsBadge from "../components/LightPointsBadge";
 import { useResources } from "../hooks/useResources";
+import { awardDailyOpenIfNeeded, processReferralIfPresent } from "../hooks/useLightPoints";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [searchQuery, setSearchQuery] = useState("");
   const { loading, shelterResources, foodResources, medicalResources, transitionalResources, traffickingResources, dropinResources, resources } = useResources();
+
+  useEffect(() => {
+    processReferralIfPresent().finally(() => {
+      awardDailyOpenIfNeeded();
+    });
+  }, []);
 
   const quickActions = [
     { id: "shelters", label: "Shelters", icon: Bed, count: shelterResources.filter(r => r.isOpen).length },
@@ -43,6 +51,7 @@ const Index = () => {
           <h1 className="font-display text-lg text-foreground leading-tight">LA Streetlight</h1>
           <p className="text-xs text-muted-foreground">Find support near you</p>
         </div>
+        <LightPointsBadge />
         <LuceSoundToggle />
       </div>
 

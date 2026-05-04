@@ -2,6 +2,7 @@ import { MapPin, Clock, Phone, ExternalLink } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
+import { awardLightPoints } from "@/hooks/useLightPoints";
 
 export interface Resource {
   id: string;
@@ -56,7 +57,10 @@ const ResourceCard = ({ resource, icon: Icon }: ResourceCardProps) => {
             <a
               href={`tel:${resource.phone}`}
               className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                awardLightPoints("view_resource", resource.id);
+              }}
             >
               <Phone className="w-3 h-3" />
               Call
@@ -67,6 +71,7 @@ const ResourceCard = ({ resource, icon: Icon }: ResourceCardProps) => {
               className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
               onClick={async (e) => {
                 e.stopPropagation();
+                awardLightPoints("view_resource", resource.id);
                 if (Capacitor.isNativePlatform()) {
                   await Browser.open({ url: resource.website! });
                 } else {

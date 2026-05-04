@@ -44,6 +44,66 @@ export type Database = {
         }
         Relationships: []
       }
+      light_actions: {
+        Row: {
+          action_date: string
+          action_type: string
+          created_at: string
+          device_id: string
+          id: string
+          points_awarded: number
+          ref_id: string | null
+        }
+        Insert: {
+          action_date?: string
+          action_type: string
+          created_at?: string
+          device_id: string
+          id?: string
+          points_awarded?: number
+          ref_id?: string | null
+        }
+        Update: {
+          action_date?: string
+          action_type?: string
+          created_at?: string
+          device_id?: string
+          id?: string
+          points_awarded?: number
+          ref_id?: string | null
+        }
+        Relationships: []
+      }
+      light_points: {
+        Row: {
+          created_at: string
+          device_id: string
+          referral_code: string
+          today_date: string
+          today_points: number
+          total_points: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          referral_code?: string
+          today_date?: string
+          today_points?: number
+          total_points?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          referral_code?: string
+          today_date?: string
+          today_points?: number
+          total_points?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_history: {
         Row: {
           device_id: string
@@ -222,6 +282,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      award_light_points: {
+        Args: { _action_type: string; _device_id: string; _ref_id?: string }
+        Returns: Json
+      }
+      credit_referrer: {
+        Args: { _new_device_id: string; _ref_code: string }
+        Returns: Json
+      }
       upvote_tip: { Args: { tip_id: string }; Returns: undefined }
     }
     Enums: {
