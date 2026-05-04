@@ -86,6 +86,7 @@ const StreetTips = () => {
     onSuccess: () => {
       setNewTip("");
       queryClient.invalidateQueries({ queryKey: ["street_tips"] });
+      awardLightPoints("submit_tip");
     },
   });
 
