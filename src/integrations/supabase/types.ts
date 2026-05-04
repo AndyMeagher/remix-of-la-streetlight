@@ -77,7 +77,9 @@ export type Database = {
       light_points: {
         Row: {
           created_at: string
+          current_streak: number
           device_id: string
+          last_active_date: string | null
           referral_code: string
           today_date: string
           today_points: number
@@ -86,7 +88,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          current_streak?: number
           device_id: string
+          last_active_date?: string | null
           referral_code?: string
           today_date?: string
           today_points?: number
@@ -95,7 +99,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          current_streak?: number
           device_id?: string
+          last_active_date?: string | null
           referral_code?: string
           today_date?: string
           today_points?: number
@@ -290,6 +296,7 @@ export type Database = {
         Args: { _new_device_id: string; _ref_code: string }
         Returns: Json
       }
+      update_streak: { Args: { _device_id: string }; Returns: Json }
       upvote_tip: { Args: { tip_id: string }; Returns: undefined }
     }
     Enums: {
