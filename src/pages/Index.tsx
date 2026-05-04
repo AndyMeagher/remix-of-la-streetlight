@@ -58,6 +58,8 @@ const Index = () => {
         <LuceSoundToggle />
       </div>
 
+      <StreakBanner />
+
       {/* Near Me Now Button */}
       <button
         onClick={() => setActiveTab("nearme")}
