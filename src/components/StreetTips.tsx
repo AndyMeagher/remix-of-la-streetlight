@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ThumbsUp, Send, MessageSquare, Flag } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { awardLightPoints } from "@/hooks/useLightPoints";
 
@@ -83,10 +84,22 @@ const StreetTips = () => {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setNewTip("");
       queryClient.invalidateQueries({ queryKey: ["street_tips"] });
-      awardLightPoints("submit_tip");
+      const result = await awardLightPoints("submit_tip");
+      if (result && result.awarded > 0) {
+        toast.success("+10 Light", {
+          description: "Your tip could help someone tonight.",
+        });
+      } else {
+        toast.success("Tip posted", {
+          description: "Thank you for sharing.",
+        });
+      }
+    },
+    onError: () => {
+      toast.error("Couldn't post tip", { description: "Please try again." });
     },
   });
 
