@@ -12,8 +12,10 @@ import LuceWelcome from "../components/LuceWelcome";
 import LuceNotificationPrompt from "../components/LuceNotificationPrompt";
 import LuceSoundToggle from "../components/LuceSoundToggle";
 import LightPointsBadge from "../components/LightPointsBadge";
+import StreakBanner from "../components/StreakBanner";
 import { useResources } from "../hooks/useResources";
 import { awardDailyOpenIfNeeded, processReferralIfPresent } from "../hooks/useLightPoints";
+import { bumpStreak } from "../hooks/useStreak";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
@@ -23,6 +25,7 @@ const Index = () => {
   useEffect(() => {
     processReferralIfPresent().finally(() => {
       awardDailyOpenIfNeeded();
+      bumpStreak();
     });
   }, []);
 
