@@ -51,6 +51,7 @@ const Index = () => {
           <h1 className="font-display text-lg text-foreground leading-tight">LA Streetlight</h1>
           <p className="text-xs text-muted-foreground">Find support near you</p>
         </div>
+        <LightPointsBadge />
         <LuceSoundToggle />
       </div>
 
