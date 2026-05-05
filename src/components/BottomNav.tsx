@@ -11,7 +11,7 @@ const tabs = [
   { id: "housing", label: "Housing", icon: Building2 },
   { id: "daily", label: "Drop-In", icon: Coffee },
   { id: "medical", label: "Medical", icon: Heart },
-  { id: "getout", label: "Safe Choices", icon: Bug },
+  { id: "getout", label: "Safe Choices", icon: Butterfly },
   { id: "tips", label: "Tips", icon: MessageSquare },
   { id: "sos", label: "SOS", icon: ShieldAlert },
 ];
