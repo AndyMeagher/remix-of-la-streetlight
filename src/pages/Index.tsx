@@ -21,6 +21,7 @@ import { bumpStreak } from "../hooks/useStreak";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
+  const [subTab, setSubTab] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
   const { loading, shelterResources, foodResources, medicalResources, transitionalResources, traffickingResources, dropinResources, resources } = useResources();
 
@@ -31,11 +32,16 @@ const Index = () => {
     });
   }, []);
 
+  const goTo = (tab: string, sub?: string) => {
+    setActiveTab(tab);
+    setSubTab(sub);
+  };
+
   const quickActions = [
-    { id: "shelters", label: "Shelters", icon: Bed, count: shelterResources.filter(r => r.isOpen).length },
-    { id: "food", label: "Food", icon: UtensilsCrossed, count: foodResources.filter(r => r.isOpen).length },
-    { id: "dropin", label: "Drop-in", icon: Coffee, count: dropinResources.filter(r => r.isOpen).length },
-    { id: "medical", label: "Medical", icon: Heart, count: medicalResources.filter(r => r.isOpen).length },
+    { id: "housing", sub: "shelters", label: "Shelters", icon: Bed, count: shelterResources.filter(r => r.isOpen).length },
+    { id: "daily", sub: "food", label: "Food", icon: UtensilsCrossed, count: foodResources.filter(r => r.isOpen).length },
+    { id: "daily", sub: "dropin", label: "Drop-in", icon: Coffee, count: dropinResources.filter(r => r.isOpen).length },
+    { id: "health", sub: "medical", label: "Medical", icon: Heart, count: medicalResources.filter(r => r.isOpen).length },
   ];
 
   const resourceMap: Record<string, { data: typeof shelterResources; icon: typeof Bed; title: string; description?: string }> = {
@@ -46,6 +52,13 @@ const Index = () => {
     medical: { data: medicalResources, icon: Heart, title: "Medical Care" },
     getout: { data: traffickingResources, icon: HandHeart, title: "Safe Choices", description: "Confidential help for youth and young adults who may be victims of human trafficking. These organizations provide safe shelter, crisis support, legal aid, and a way out — no judgment, no questions." },
   };
+
+  const groupMap: Record<string, { title: string; tabs: { id: string; label: string }[] }> = {
+    housing: { title: "Housing", tabs: [{ id: "shelters", label: "Shelters" }, { id: "transitional", label: "AB12" }] },
+    daily: { title: "Food & Drop-in", tabs: [{ id: "food", label: "Meals" }, { id: "dropin", label: "Drop-in" }] },
+    health: { title: "Health & Safety", tabs: [{ id: "medical", label: "Medical" }, { id: "getout", label: "Safe Choices" }] },
+  };
+
 
   const renderHome = () => (
     <div className="px-4 pt-6 pb-24">
