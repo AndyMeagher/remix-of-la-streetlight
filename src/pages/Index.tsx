@@ -56,7 +56,6 @@ const Index = () => {
   const groupMap: Record<string, { title: string; tabs: { id: string; label: string }[] }> = {
     housing: { title: "Housing", tabs: [{ id: "shelters", label: "Shelters" }, { id: "transitional", label: "AB12" }] },
     daily: { title: "Food & Drop-in", tabs: [{ id: "food", label: "Meals" }, { id: "dropin", label: "Drop-in" }] },
-    health: { title: "Health & Safety", tabs: [{ id: "medical", label: "Medical" }, { id: "getout", label: "Safe Choices" }] },
   };
 
 
