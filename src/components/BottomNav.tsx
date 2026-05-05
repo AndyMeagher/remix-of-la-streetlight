@@ -1,4 +1,4 @@
-import { Home, Building2, Coffee, Heart, MessageSquare, ShieldAlert } from "lucide-react";
+import { Home, Building2, Coffee, Heart, MessageSquare, ShieldAlert, Bug } from "lucide-react";
 
 interface BottomNavProps {
   activeTab: string;
@@ -9,14 +9,15 @@ const tabs = [
   { id: "home", label: "Home", icon: Home },
   { id: "housing", label: "Housing", icon: Building2 },
   { id: "daily", label: "Drop-In", icon: Coffee },
-  { id: "health", label: "Health", icon: Heart },
+  { id: "medical", label: "Medical", icon: Heart },
+  { id: "getout", label: "Safe Choices", icon: Bug },
   { id: "tips", label: "Tips", icon: MessageSquare },
   { id: "sos", label: "SOS", icon: ShieldAlert },
 ];
 
 const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border px-2 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border px-1 pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
