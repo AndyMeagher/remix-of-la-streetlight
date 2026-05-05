@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bed, UtensilsCrossed, Heart, Search, Building2, HandHeart, Navigation, Loader2, Coffee } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import luceMascot from "@/assets/luce-mascot.png";
 import BottomNav from "../components/BottomNav";
 import QuickExit from "../components/QuickExit";
@@ -20,6 +21,7 @@ import { bumpStreak } from "../hooks/useStreak";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
+  const [subTab, setSubTab] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
   const { loading, shelterResources, foodResources, medicalResources, transitionalResources, traffickingResources, dropinResources, resources } = useResources();
 
@@ -30,11 +32,16 @@ const Index = () => {
     });
   }, []);
 
+  const goTo = (tab: string, sub?: string) => {
+    setActiveTab(tab);
+    setSubTab(sub);
+  };
+
   const quickActions = [
-    { id: "shelters", label: "Shelters", icon: Bed, count: shelterResources.filter(r => r.isOpen).length },
-    { id: "food", label: "Food", icon: UtensilsCrossed, count: foodResources.filter(r => r.isOpen).length },
-    { id: "dropin", label: "Drop-in", icon: Coffee, count: dropinResources.filter(r => r.isOpen).length },
-    { id: "medical", label: "Medical", icon: Heart, count: medicalResources.filter(r => r.isOpen).length },
+    { id: "housing", sub: "shelters", label: "Shelters", icon: Bed, count: shelterResources.filter(r => r.isOpen).length },
+    { id: "daily", sub: "food", label: "Food", icon: UtensilsCrossed, count: foodResources.filter(r => r.isOpen).length },
+    { id: "daily", sub: "dropin", label: "Drop-in", icon: Coffee, count: dropinResources.filter(r => r.isOpen).length },
+    { id: "health", sub: "medical", label: "Medical", icon: Heart, count: medicalResources.filter(r => r.isOpen).length },
   ];
 
   const resourceMap: Record<string, { data: typeof shelterResources; icon: typeof Bed; title: string; description?: string }> = {
@@ -45,6 +52,13 @@ const Index = () => {
     medical: { data: medicalResources, icon: Heart, title: "Medical Care" },
     getout: { data: traffickingResources, icon: HandHeart, title: "Safe Choices", description: "Confidential help for youth and young adults who may be victims of human trafficking. These organizations provide safe shelter, crisis support, legal aid, and a way out — no judgment, no questions." },
   };
+
+  const groupMap: Record<string, { title: string; tabs: { id: string; label: string }[] }> = {
+    housing: { title: "Housing", tabs: [{ id: "shelters", label: "Shelters" }, { id: "transitional", label: "AB12" }] },
+    daily: { title: "Food & Drop-in", tabs: [{ id: "food", label: "Meals" }, { id: "dropin", label: "Drop-in" }] },
+    health: { title: "Health & Safety", tabs: [{ id: "medical", label: "Medical" }, { id: "getout", label: "Safe Choices" }] },
+  };
+
 
   const renderHome = () => (
     <div className="px-4 pt-6 pb-24">
@@ -91,8 +105,8 @@ const Index = () => {
       <div className="grid grid-cols-4 gap-2 mb-8">
         {quickActions.map((action) => (
           <button
-            key={action.id}
-            onClick={() => setActiveTab(action.id)}
+            key={`${action.id}-${action.sub}`}
+            onClick={() => goTo(action.id, action.sub)}
             className="bg-card border border-border rounded-xl p-4 flex flex-col items-center gap-2 active:bg-secondary transition-colors"
           >
             <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center">
@@ -150,25 +164,42 @@ const Index = () => {
     </div>
   );
 
-  const renderResourceList = (tabId: string) => {
-    const config = resourceMap[tabId];
-    if (!config) return null;
+  const renderGroup = (groupId: string) => {
+    const group = groupMap[groupId];
+    if (!group) return null;
+    const defaultSub = group.tabs[0].id;
+    const value = subTab && group.tabs.some((t) => t.id === subTab) ? subTab : defaultSub;
     return (
       <div className="px-4 pt-6 pb-24">
-        <h2 className="font-display text-xl text-foreground mb-1">{config.title}</h2>
-        {config.description && (
-          <p className="text-xs text-primary/80 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2 mb-4">
-            {config.description}
-          </p>
-        )}
-        <p className="text-sm text-muted-foreground mb-5">
-          {config.data.filter((r) => r.isOpen).length} of {config.data.length} open now
-        </p>
-        <div className="space-y-2">
-          {config.data.map((resource) => (
-            <ResourceCard key={resource.id} resource={resource} icon={config.icon} />
-          ))}
-        </div>
+        <h2 className="font-display text-xl text-foreground mb-4">{group.title}</h2>
+        <Tabs value={value} onValueChange={setSubTab} className="w-full">
+          <TabsList className="w-full grid" style={{ gridTemplateColumns: `repeat(${group.tabs.length}, 1fr)` }}>
+            {group.tabs.map((t) => (
+              <TabsTrigger key={t.id} value={t.id}>{t.label}</TabsTrigger>
+            ))}
+          </TabsList>
+          {group.tabs.map((t) => {
+            const config = resourceMap[t.id];
+            if (!config) return null;
+            return (
+              <TabsContent key={t.id} value={t.id} className="mt-4">
+                {config.description && (
+                  <p className="text-xs text-primary/80 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2 mb-4">
+                    {config.description}
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground mb-4">
+                  {config.data.filter((r) => r.isOpen).length} of {config.data.length} open now
+                </p>
+                <div className="space-y-2">
+                  {config.data.map((resource) => (
+                    <ResourceCard key={resource.id} resource={resource} icon={config.icon} />
+                  ))}
+                </div>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
       </div>
     );
   };
@@ -183,12 +214,12 @@ const Index = () => {
       {activeTab === "nearme" && <NearMeNow />}
       {activeTab === "sos" && <SOSPanel />}
       {activeTab === "tips" && <StreetTips />}
-      {["shelters", "transitional", "food", "dropin", "medical", "getout"].includes(activeTab) && renderResourceList(activeTab)}
+      {["housing", "daily", "health"].includes(activeTab) && renderGroup(activeTab)}
       <footer className="px-4 pb-20 pt-4 text-center text-xs text-muted-foreground flex justify-center gap-4">
         <Link to="/privacy" className="hover:text-primary underline">Privacy Policy</Link>
         <Link to="/support" className="hover:text-primary underline">Support</Link>
       </footer>
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={(t) => { setActiveTab(t); setSubTab(undefined); }} />
     </div>
   );
 };
