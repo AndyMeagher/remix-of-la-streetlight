@@ -105,8 +105,8 @@ const Index = () => {
       <div className="grid grid-cols-4 gap-2 mb-8">
         {quickActions.map((action) => (
           <button
-            key={action.id}
-            onClick={() => setActiveTab(action.id)}
+            key={`${action.id}-${action.sub}`}
+            onClick={() => goTo(action.id, action.sub)}
             className="bg-card border border-border rounded-xl p-4 flex flex-col items-center gap-2 active:bg-secondary transition-colors"
           >
             <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center">
