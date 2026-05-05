@@ -213,7 +213,29 @@ const Index = () => {
       {activeTab === "nearme" && <NearMeNow />}
       {activeTab === "sos" && <SOSPanel />}
       {activeTab === "tips" && <StreetTips />}
-      {["housing", "daily", "health"].includes(activeTab) && renderGroup(activeTab)}
+      {["housing", "daily"].includes(activeTab) && renderGroup(activeTab)}
+      {["medical", "getout"].includes(activeTab) && (() => {
+        const config = resourceMap[activeTab];
+        if (!config) return null;
+        return (
+          <div className="px-4 pt-6 pb-24">
+            <h2 className="font-display text-xl text-foreground mb-4">{config.title}</h2>
+            {config.description && (
+              <p className="text-xs text-primary/80 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2 mb-4">
+                {config.description}
+              </p>
+            )}
+            <p className="text-sm text-muted-foreground mb-4">
+              {config.data.filter((r) => r.isOpen).length} of {config.data.length} open now
+            </p>
+            <div className="space-y-2">
+              {config.data.map((resource) => (
+                <ResourceCard key={resource.id} resource={resource} icon={config.icon} />
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       <footer className="px-4 pb-20 pt-4 text-center text-xs text-muted-foreground flex justify-center gap-4">
         <Link to="/privacy" className="hover:text-primary underline">Privacy Policy</Link>
         <Link to="/support" className="hover:text-primary underline">Support</Link>
