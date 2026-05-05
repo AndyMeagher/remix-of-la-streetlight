@@ -164,25 +164,42 @@ const Index = () => {
     </div>
   );
 
-  const renderResourceList = (tabId: string) => {
-    const config = resourceMap[tabId];
-    if (!config) return null;
+  const renderGroup = (groupId: string) => {
+    const group = groupMap[groupId];
+    if (!group) return null;
+    const defaultSub = group.tabs[0].id;
+    const value = subTab && group.tabs.some((t) => t.id === subTab) ? subTab : defaultSub;
     return (
       <div className="px-4 pt-6 pb-24">
-        <h2 className="font-display text-xl text-foreground mb-1">{config.title}</h2>
-        {config.description && (
-          <p className="text-xs text-primary/80 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2 mb-4">
-            {config.description}
-          </p>
-        )}
-        <p className="text-sm text-muted-foreground mb-5">
-          {config.data.filter((r) => r.isOpen).length} of {config.data.length} open now
-        </p>
-        <div className="space-y-2">
-          {config.data.map((resource) => (
-            <ResourceCard key={resource.id} resource={resource} icon={config.icon} />
-          ))}
-        </div>
+        <h2 className="font-display text-xl text-foreground mb-4">{group.title}</h2>
+        <Tabs value={value} onValueChange={setSubTab} className="w-full">
+          <TabsList className="w-full grid" style={{ gridTemplateColumns: `repeat(${group.tabs.length}, 1fr)` }}>
+            {group.tabs.map((t) => (
+              <TabsTrigger key={t.id} value={t.id}>{t.label}</TabsTrigger>
+            ))}
+          </TabsList>
+          {group.tabs.map((t) => {
+            const config = resourceMap[t.id];
+            if (!config) return null;
+            return (
+              <TabsContent key={t.id} value={t.id} className="mt-4">
+                {config.description && (
+                  <p className="text-xs text-primary/80 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2 mb-4">
+                    {config.description}
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground mb-4">
+                  {config.data.filter((r) => r.isOpen).length} of {config.data.length} open now
+                </p>
+                <div className="space-y-2">
+                  {config.data.map((resource) => (
+                    <ResourceCard key={resource.id} resource={resource} icon={config.icon} />
+                  ))}
+                </div>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
       </div>
     );
   };
@@ -197,12 +214,12 @@ const Index = () => {
       {activeTab === "nearme" && <NearMeNow />}
       {activeTab === "sos" && <SOSPanel />}
       {activeTab === "tips" && <StreetTips />}
-      {["shelters", "transitional", "food", "dropin", "medical", "getout"].includes(activeTab) && renderResourceList(activeTab)}
+      {["housing", "daily", "health"].includes(activeTab) && renderGroup(activeTab)}
       <footer className="px-4 pb-20 pt-4 text-center text-xs text-muted-foreground flex justify-center gap-4">
         <Link to="/privacy" className="hover:text-primary underline">Privacy Policy</Link>
         <Link to="/support" className="hover:text-primary underline">Support</Link>
       </footer>
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={(t) => { setActiveTab(t); setSubTab(undefined); }} />
     </div>
   );
 };
