@@ -1,4 +1,5 @@
-import { Home, Building2, Coffee, Heart, MessageSquare, ShieldAlert, Bug } from "lucide-react";
+import { Home, Building2, Coffee, Heart, MessageSquare, ShieldAlert } from "lucide-react";
+import Butterfly from "./icons/Butterfly";
 
 interface BottomNavProps {
   activeTab: string;
