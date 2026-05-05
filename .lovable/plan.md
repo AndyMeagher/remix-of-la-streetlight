@@ -1,29 +1,43 @@
+## Goal
+Reduce `BottomNav` from 9 tabs to 6 without losing access to any category. Combine related categories into grouped landing screens that show sub-sections.
 
+## Current tabs (9)
+Home · Shelters · AB12 · Food · Drop-in · Tips · Medical · Safe Choices · SOS
 
-# Fix: Deploy register-device-token Edge Function
+## Proposed tabs (6)
 
-## Problem
-The edge function file exists but was never successfully deployed — likely because the CORS import (`https://esm.sh/@supabase/supabase-js@2.49.4/cors`) doesn't resolve on esm.sh, causing a deploy error.
+1. **Home** — unchanged
+2. **Housing** — combines **Shelters + AB12 (transitional)**. One screen with two segmented sections ("Shelters" / "AB12 Transitional"). These are both "places to sleep / live" so they belong together.
+3. **Food & Drop-in** (label: **"Food"** with Drop-in inside, or **"Daily"**) — combines **Food + Drop-in** as you suggested. Drop-in centers often serve meals, so they pair naturally. Segmented control inside: Meals / Drop-in Centers.
+4. **Health** — combines **Medical + Safe Choices (anti-trafficking)**. Both are sensitive, body/safety-related support. Segmented inside: Medical / Safe Choices. (Safe Choices keeps its own description banner so it stays discoverable.)
+5. **Tips** — unchanged (community feed is distinct)
+6. **SOS** — unchanged (must stay one tap, red, always visible)
 
-## Solution
-Replace the broken CORS import with inline CORS headers (the standard pattern), then explicitly deploy the function.
+That's 6 tabs, no category lost.
 
-## Steps
+### Alternative groupings (if you prefer different combos)
+- Move **Tips** into Home as a top section, and keep **Safe Choices** as its own tab. (Less ideal — Tips is high-engagement and benefits from its own tab.)
+- Combine **AB12 + Safe Choices** under a "Youth Support" tab. (Weaker fit — they serve different needs.)
 
-### 1. Update `supabase/functions/register-device-token/index.ts`
-- Remove the `corsHeaders` import from `esm.sh`
-- Define `corsHeaders` inline:
-```typescript
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-```
-- Keep everything else unchanged
+I'd recommend the main proposal above.
 
-### 2. Deploy the function
-Use the deploy tool to push `register-device-token` to the edge runtime.
+## Implementation (technical)
 
-### Files changed
-- **Modified**: `supabase/functions/register-device-token/index.ts` — fix CORS import
+- **`src/components/BottomNav.tsx`**: reduce `tabs` array to the 6 above. Pick icons:
+  - Housing → `Bed` (or `Home` swap; keep `Home` icon for Home tab — use `Building2` for Housing)
+  - Food → `UtensilsCrossed`
+  - Health → `Heart`
+  - Tips → `MessageSquare`
+  - SOS → `ShieldAlert`
+- **`src/pages/Index.tsx`**:
+  - Replace individual tab IDs (`shelters`, `transitional`, `food`, `dropin`, `medical`, `getout`) with grouped IDs (`housing`, `daily`, `health`).
+  - Build a small grouped renderer that uses the existing `Tabs` component (`@/components/ui/tabs`) to switch between sub-categories inside each grouped screen, reusing `ResourceCard` and the existing `resourceMap` data.
+  - Update the home screen `quickActions` grid to point to the new grouped tab IDs (e.g. Shelters quick-action opens Housing tab with Shelters sub-tab preselected). Pass an optional `subTab` via state.
+  - Keep "Open Now Nearby" logic unchanged.
+- No backend / data changes. No changes to `useResources` — same categories under the hood.
 
+## Out of scope
+- No renaming of underlying resource categories in the database.
+- No changes to SOS, Tips, Quick Exit, Light Points, or Streak features.
+
+Confirm the grouping (or pick an alternative) and I'll implement.
