@@ -472,6 +472,39 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const now = new Date();
+
+    // ── Active scheduled campaign (LA date) ──
+    const laTodayStr = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Los_Angeles",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(now); // YYYY-MM-DD
+
+    const { data: activeCampaigns } = await supabase
+      .from("scheduled_campaigns")
+      .select("id, name, start_date, end_date")
+      .eq("active", true)
+      .lte("start_date", laTodayStr)
+      .gte("end_date", laTodayStr)
+      .limit(1);
+
+    let activeCampaign: { id: string; name: string; start_date: string; end_date: string } | null =
+      activeCampaigns && activeCampaigns.length > 0 ? activeCampaigns[0] : null;
+    let campaignMessages: Array<{ title: string; body: string }> = [];
+
+    if (activeCampaign) {
+      const { data: msgs } = await supabase
+        .from("campaign_messages")
+        .select("title, body")
+        .eq("campaign_id", activeCampaign.id);
+      campaignMessages = msgs ?? [];
+      if (campaignMessages.length === 0) {
+        console.log(`Campaign "${activeCampaign.name}" active but has no messages — skipping campaign mode.`);
+        activeCampaign = null;
+      } else {
+        console.log(`Active campaign: "${activeCampaign.name}" with ${campaignMessages.length} messages.`);
+      }
+    }
+
     const weekStart = new Date(now);
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     weekStart.setHours(0, 0, 0, 0);
@@ -588,8 +621,74 @@ Deno.serve(async (req) => {
         if (hoursSince < 24) continue;
       }
 
+      // ── Campaign delivery (takes precedence, bypasses 40% gate) ──
+      if (activeCampaign) {
+        const { data: alreadyGot } = await supabase
+          .from("notification_history")
+          .select("id")
+          .eq("device_id", device.device_id)
+          .eq("campaign_id", activeCampaign.id)
+          .gte("sent_at", activeCampaign.start_date)
+          .limit(1);
+
+        if (!alreadyGot || alreadyGot.length === 0) {
+          const pick = campaignMessages[Math.floor(Math.random() * campaignMessages.length)];
+          const campaignPayload = JSON.stringify({
+            title: pick.title || "Luce 💛",
+            body: pick.body,
+            type: "encouragement",
+          });
+
+          let cResult: { expired: boolean; status?: number };
+          try {
+            if (device.platform === "ios") {
+              cResult = await sendApnsPush(device.token, campaignPayload, bundleId);
+            } else if (device.platform === "android") {
+              cResult = await sendFcmPush(device.token, campaignPayload);
+            } else {
+              if (!device.p256dh || !device.auth) continue;
+              cResult = await sendWebPush(
+                { endpoint: device.token, p256dh: device.p256dh, auth: device.auth },
+                campaignPayload,
+              );
+            }
+          } catch (err) {
+            console.error(`  Campaign send failed for ${device.device_id}:`, err);
+            continue;
+          }
+
+          if (cResult.expired) {
+            await supabase.from("device_tokens").delete().eq("device_id", device.device_id);
+            await supabase.from("push_subscriptions").delete().eq("device_id", device.device_id);
+            continue;
+          }
+          if (cResult.status && cResult.status >= 400) continue;
+
+          await supabase.from("notification_history").insert({
+            device_id: device.device_id,
+            message_index: -1, // sentinel: campaign message, not pool index
+            campaign_id: activeCampaign.id,
+          });
+
+          if (device.platform === "web") {
+            await supabase
+              .from("push_subscriptions")
+              .update({
+                last_notified_at: now.toISOString(),
+                notifications_this_week: weeklyCount + 1,
+                week_start: weekStartStr,
+              })
+              .eq("device_id", device.device_id);
+          }
+
+          sent++;
+          continue; // skip the regular pool send for this device this run
+        }
+      }
+
       // Probabilistic send: ~0.40 chance per cron run (40%)
       if (Math.random() > 0.40) continue;
+
 
       // Get recent message indices (last 7 days) to avoid repeats
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
