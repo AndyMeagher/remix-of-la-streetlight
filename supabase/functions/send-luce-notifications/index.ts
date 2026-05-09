@@ -472,6 +472,39 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const now = new Date();
+
+    // ── Active scheduled campaign (LA date) ──
+    const laTodayStr = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Los_Angeles",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(now); // YYYY-MM-DD
+
+    const { data: activeCampaigns } = await supabase
+      .from("scheduled_campaigns")
+      .select("id, name, start_date, end_date")
+      .eq("active", true)
+      .lte("start_date", laTodayStr)
+      .gte("end_date", laTodayStr)
+      .limit(1);
+
+    let activeCampaign: { id: string; name: string; start_date: string; end_date: string } | null =
+      activeCampaigns && activeCampaigns.length > 0 ? activeCampaigns[0] : null;
+    let campaignMessages: Array<{ title: string; body: string }> = [];
+
+    if (activeCampaign) {
+      const { data: msgs } = await supabase
+        .from("campaign_messages")
+        .select("title, body")
+        .eq("campaign_id", activeCampaign.id);
+      campaignMessages = msgs ?? [];
+      if (campaignMessages.length === 0) {
+        console.log(`Campaign "${activeCampaign.name}" active but has no messages — skipping campaign mode.`);
+        activeCampaign = null;
+      } else {
+        console.log(`Active campaign: "${activeCampaign.name}" with ${campaignMessages.length} messages.`);
+      }
+    }
+
     const weekStart = new Date(now);
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     weekStart.setHours(0, 0, 0, 0);
