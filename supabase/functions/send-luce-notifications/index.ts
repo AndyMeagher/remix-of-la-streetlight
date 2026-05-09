@@ -634,7 +634,7 @@ Deno.serve(async (req) => {
         if (!alreadyGot || alreadyGot.length === 0) {
           const pick = campaignMessages[Math.floor(Math.random() * campaignMessages.length)];
           const campaignPayload = JSON.stringify({
-            title: pick.title || "Luce 💛",
+            title: pick.title || "Luce",
             body: pick.body,
             type: "encouragement",
           });
@@ -705,7 +705,7 @@ Deno.serve(async (req) => {
       console.log(`  Sending message index ${messageIndex}: "${message.body.slice(0, 40)}..."`);
 
       const payload = JSON.stringify({
-        title: "Luce 💛",
+        title: "Luce",
         body: message.body,
         type: message.type,
       });

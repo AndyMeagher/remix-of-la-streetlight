@@ -13,8 +13,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: '/favicon.png',
-    badge: '/favicon.png',
+    icon: '/luce-icon.png',
+    badge: '/luce-icon.png',
     tag: 'luce-notification',
     renotify: true,
     silent: false,
@@ -28,7 +28,7 @@ self.addEventListener('push', (event) => {
       : [{ action: 'open-app', title: 'Open LA Streetlight' }],
   };
 
-  event.waitUntil(self.registration.showNotification(data.title || 'Luce 💛', options));
+  event.waitUntil(self.registration.showNotification(data.title || 'Luce', options));
 });
 
 self.addEventListener('notificationclick', (event) => {

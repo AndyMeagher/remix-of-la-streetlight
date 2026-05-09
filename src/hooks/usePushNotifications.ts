@@ -104,7 +104,7 @@ export function usePushNotifications() {
 
         PushNotifications.addListener("pushNotificationReceived", (notification) => {
           setForegroundNotification({
-            title: notification.title ?? "Luce 💛",
+            title: notification.title ?? "Luce",
             body: notification.body ?? "",
           });
         }),
