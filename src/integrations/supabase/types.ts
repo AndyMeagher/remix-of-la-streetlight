@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_messages: {
+        Row: {
+          body: string
+          campaign_id: string
+          created_at: string
+          id: string
+          title: string
+        }
+        Insert: {
+          body: string
+          campaign_id: string
+          created_at?: string
+          id?: string
+          title?: string
+        }
+        Update: {
+          body?: string
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_tokens: {
         Row: {
           auth: string | null
@@ -112,24 +144,35 @@ export type Database = {
       }
       notification_history: {
         Row: {
+          campaign_id: string | null
           device_id: string
           id: string
           message_index: number
           sent_at: string
         }
         Insert: {
+          campaign_id?: string | null
           device_id: string
           id?: string
           message_index: number
           sent_at?: string
         }
         Update: {
+          campaign_id?: string | null
           device_id?: string
           id?: string
           message_index?: number
           sent_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notification_history_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
@@ -224,6 +267,36 @@ export type Database = {
           schedule?: Json | null
           tags?: string[] | null
           website?: string | null
+        }
+        Relationships: []
+      }
+      scheduled_campaigns: {
+        Row: {
+          active: boolean
+          created_at: string
+          end_date: string
+          id: string
+          name: string
+          recurrence: string
+          start_date: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          end_date: string
+          id?: string
+          name: string
+          recurrence?: string
+          start_date: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          end_date?: string
+          id?: string
+          name?: string
+          recurrence?: string
+          start_date?: string
         }
         Relationships: []
       }
