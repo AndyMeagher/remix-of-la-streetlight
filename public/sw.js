@@ -13,8 +13,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: '/favicon.png',
-    badge: '/favicon.png',
+    icon: '/luce-icon.png',
+    badge: '/luce-icon.png',
     tag: 'luce-notification',
     renotify: true,
     silent: false,
