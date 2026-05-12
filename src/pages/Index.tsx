@@ -90,6 +90,30 @@ const Index = () => {
         </div>
       </button>
 
+      {/* Light Journey + Vault entry cards */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <button
+          onClick={() => setActiveTab("journey")}
+          className="bg-card border border-border rounded-xl p-4 text-left active:bg-secondary transition-colors"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center mb-2">
+            <Map className="w-5 h-5 text-primary" />
+          </div>
+          <p className="font-display text-sm text-foreground">Light Journey</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Your road to independence</p>
+        </button>
+        <button
+          onClick={() => setActiveTab("vault")}
+          className="bg-card border border-border rounded-xl p-4 text-left active:bg-secondary transition-colors"
+        >
+          <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center mb-2">
+            <ShieldCheck className="w-5 h-5 text-accent" />
+          </div>
+          <p className="font-display text-sm text-foreground">Document Vault</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">PIN-protected & private</p>
+        </button>
+      </div>
+
       {/* Search */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
