@@ -237,6 +237,8 @@ const Index = () => {
       <FloatingStats />
       {activeTab === "home" && renderHome()}
       {activeTab === "nearme" && <NearMeNow />}
+      {activeTab === "journey" && <LightJourney />}
+      {activeTab === "vault" && <DocumentVault />}
       {activeTab === "sos" && <SOSPanel />}
       {activeTab === "tips" && <StreetTips />}
       {["housing", "daily"].includes(activeTab) && renderGroup(activeTab)}
