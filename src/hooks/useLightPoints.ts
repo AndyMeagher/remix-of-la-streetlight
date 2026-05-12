@@ -7,7 +7,9 @@ export type LightAction =
   | "view_resource"
   | "submit_tip"
   | "referral_share"
-  | "referral_install";
+  | "referral_install"
+  | "milestone_complete"
+  | "vault_setup";
 
 export function getDeviceId(): string {
   let id = localStorage.getItem("luce_device_id");
