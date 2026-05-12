@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bed, UtensilsCrossed, Heart, Search, Building2, HandHeart, Navigation, Loader2, Coffee } from "lucide-react";
+import { Bed, UtensilsCrossed, Heart, Search, Building2, HandHeart, Navigation, Loader2, Coffee, Map, ShieldCheck } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import luceMascot from "@/assets/luce-mascot.png";
 import BottomNav from "../components/BottomNav";
@@ -9,6 +9,8 @@ import ResourceCard from "../components/ResourceCard";
 import SOSPanel from "../components/SOSPanel";
 import StreetTips from "../components/StreetTips";
 import NearMeNow from "../components/NearMeNow";
+import LightJourney from "../components/LightJourney";
+import DocumentVault from "../components/DocumentVault";
 import LuceWelcome from "../components/LuceWelcome";
 import LuceNotificationPrompt from "../components/LuceNotificationPrompt";
 import LuceSoundToggle from "../components/LuceSoundToggle";
