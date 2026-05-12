@@ -24,7 +24,7 @@ function b64decode(s: string): Uint8Array {
   return out;
 }
 
-async function deriveKey(pin: string, salt: Uint8Array): Promise<CryptoKey> {
+async function deriveKey(pin: string, salt: BufferSource): Promise<CryptoKey> {
   const enc = new TextEncoder();
   const baseKey = await crypto.subtle.importKey(
     "raw",
