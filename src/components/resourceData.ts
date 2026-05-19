@@ -60,7 +60,7 @@ export const resourceCoordinates: Record<string, { lat: number; lng: number }> =
   tr7: { lat: 33.7455, lng: -117.8678 }, // Project CHOICE
   tr8: { lat: 33.8958, lng: -118.2201 }, // Restoration Diversion
   tr9: { lat: 34.1865, lng: -118.4489 }, // Children of the Night
-  tr10: { lat: 34.1064, lng: -117.5931 }, // Magdalena's Daughters
+  tr12: { lat: 34.1064, lng: -117.5931 }, // Magdalena's Daughters
 };
 
 export const shelterResources: Resource[] = [
@@ -515,6 +515,17 @@ export const traffickingResources: Resource[] = [
     phone: "8005511300",
     website: "https://childrenofthenight.org",
     tags: ["Youth", "CSEC", "Shelter", "24/7 Hotline"],
+  },
+  {
+    id: "tr12",
+    name: "Magdalena's Daughters",
+    address: "8816 Foothill Blvd, Rancho Cucamonga",
+    distance: "40.0 mi",
+    isOpen: true,
+    hours: "Varies",
+    phone: "9099060472",
+    website: "https://www.magdalenasdaughters.org",
+    tags: ["Youth", "Women", "CSEC", "Foster Youth", "Residential", "Therapy"],
   },
 ];
 
