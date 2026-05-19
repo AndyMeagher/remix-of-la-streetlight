@@ -37,6 +37,8 @@ const MESSAGES = [
   { body: "Real talk helps real people. Leave a tip if you've got one.", type: "community" },
   { body: "Sometimes what we've learned the hard way can light the path for someone else.", type: "community" },
   { body: "You've made it through some things... someone else is still in it. Your words could help.", type: "community" },
+  // Referral
+  { body: "Finding help shouldn't be this hard, but now you know where to go- Pass it on.", type: "encouragement" },
   { body: "I hope you find your people.", type: "encouragement" },
   { body: "You've been through a lot.. It makes sense that trusting people is hard.", type: "encouragement" },
 ];
