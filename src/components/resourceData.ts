@@ -60,6 +60,7 @@ export const resourceCoordinates: Record<string, { lat: number; lng: number }> =
   tr7: { lat: 33.7455, lng: -117.8678 }, // Project CHOICE
   tr8: { lat: 33.8958, lng: -118.2201 }, // Restoration Diversion
   tr9: { lat: 34.1865, lng: -118.4489 }, // Children of the Night
+  tr10: { lat: 34.1064, lng: -117.5931 }, // Magdalena's Daughters
 };
 
 export const shelterResources: Resource[] = [
