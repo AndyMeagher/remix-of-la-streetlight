@@ -39,6 +39,8 @@ const MESSAGES = [
   { body: "You've made it through some things... someone else is still in it. Your words could help.", type: "community" },
   // Referral
   { body: "Finding help shouldn't be this hard, but now you know where to go- Pass it on.", type: "encouragement" },
+  { body: "One share could change everything for somebody out here. Don't sleep on that.", type: "encouragement" },
+  { body: "LA Street Light exists because nobody should have to feel alone. Know someone who needs it? Share today.", type: "encouragement" },
   { body: "I hope you find your people.", type: "encouragement" },
   { body: "You've been through a lot.. It makes sense that trusting people is hard.", type: "encouragement" },
 ];
