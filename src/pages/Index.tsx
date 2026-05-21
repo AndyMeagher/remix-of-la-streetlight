@@ -9,6 +9,7 @@ import ResourceCard from "../components/ResourceCard";
 import SOSPanel from "../components/SOSPanel";
 import StreetTips from "../components/StreetTips";
 import NearMeNow from "../components/NearMeNow";
+import PeerSupport from "../components/PeerSupport";
 import LightJourney from "../components/LightJourney";
 import DocumentVault from "../components/DocumentVault";
 import LuceWelcome from "../components/LuceWelcome";
