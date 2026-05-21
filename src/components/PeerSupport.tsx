@@ -207,7 +207,7 @@ function GroupCard({ group, onCopy }: { group: PeerGroup; onCopy: (t: string, la
   return (
     <div className="bg-card border border-border rounded-xl p-4">
       <div className="flex items-start justify-between gap-2 mb-1">
-        <h4 className="font-display text-base text-foreground leading-snug flex-1">{group.title}</h4>
+        <h4 className="font-display text-sm text-foreground leading-snug flex-1">{group.title}</h4>
         <span className={`text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap ${FORMAT_BADGE[group.format]}`}>
           {group.format === "in-person" ? "In person" : group.format === "online" ? "Online" : "Hybrid"}
         </span>
