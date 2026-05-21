@@ -257,6 +257,7 @@ const Index = () => {
       {activeTab === "vault" && <DocumentVault />}
       {activeTab === "sos" && <SOSPanel />}
       {activeTab === "tips" && <StreetTips />}
+      {activeTab === "peer" && <PeerSupport />}
       {["housing", "daily"].includes(activeTab) && renderGroup(activeTab)}
       {["medical", "getout"].includes(activeTab) && (() => {
         const config = resourceMap[activeTab];
