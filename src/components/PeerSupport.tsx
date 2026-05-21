@@ -66,7 +66,7 @@ const PeerSupport = () => {
     if (result?.success) {
       toast({ title: "Schedule refreshed", description: `Verified ${result.groups_count} meetings with SHARE!` });
     } else {
-      toast({ title: "Refresh failed", description: result?.errors?.join(" ") || "Try again in a moment.", variant: "destructive" });
+      toast({ title: "Refresh failed", description: result?.error || "Try again in a moment.", variant: "destructive" });
     }
   };
 
