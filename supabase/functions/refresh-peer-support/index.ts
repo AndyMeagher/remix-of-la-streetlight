@@ -197,15 +197,3 @@ Deno.serve(async (req) => {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
-
-
-    return new Response(JSON.stringify({ success, groups_count: seenKeys.size, total_parsed: totalParsed, errors }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    await sb.from("peer_support_refresh_log").insert({ source: "share", success: false, groups_count: 0, error: msg });
-    return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-});
