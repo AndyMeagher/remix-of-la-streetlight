@@ -115,6 +115,21 @@ const Index = () => {
         </button>
       </div>
 
+      {/* Peer to Peer Support entry */}
+      <button
+        onClick={() => setActiveTab("peer")}
+        className="w-full mb-6 bg-card border border-border rounded-xl p-4 flex items-center gap-3 active:bg-secondary transition-colors text-left"
+      >
+        <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+          <Users className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1">
+          <p className="font-display text-sm text-foreground">Peer to Peer Support</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Free drop-in groups · Powered by Share Help LA</p>
+        </div>
+      </button>
+
+
       {/* Search */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
