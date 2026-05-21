@@ -44,20 +44,20 @@ const PARSE_SCHEMA = {
 };
 
 async function firecrawlScrape(url: string, apiKey: string): Promise<string> {
-  const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      url,
-      formats: ["markdown"],
-      onlyMainContent: false,
-      waitFor: 6000,
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`Firecrawl ${res.status}: ${JSON.stringify(data).slice(0, 400)}`);
-  const md: string | undefined = data?.data?.markdown ?? data?.markdown;
-  if (!md) throw new Error("Firecrawl returned no markdown");
+  const attempt = async (waitFor: number) => {
+    const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: false, waitFor }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(`Firecrawl ${res.status}: ${JSON.stringify(data).slice(0, 400)}`);
+    const md: string | undefined = data?.data?.markdown ?? data?.markdown;
+    return md && md.length > 1000 ? md : null;
+  };
+  let md = await attempt(10000);
+  if (!md) md = await attempt(15000);
+  if (!md) throw new Error("Firecrawl returned no markdown after retries");
   return md;
 }
 
