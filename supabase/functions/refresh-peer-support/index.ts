@@ -94,6 +94,80 @@ function normalizeKey(location: string, title: string, dow: number, t: string): 
   return `${location}|${dow}|${t || "0000"}|${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60)}`;
 }
 
+async function runRefresh(sb: any, FIRECRAWL: string, LOVABLE: string) {
+  let totalParsed = 0;
+  const seenKeys = new Set<string>();
+  const errors: string[] = [];
+
+  for (const src of SOURCES) {
+    try {
+      console.log(`Scraping ${src.url}`);
+      const md = await firecrawlScrape(src.url, FIRECRAWL);
+      console.log(`Got ${md.length} chars from ${src.location}`);
+      const groups = await aiParse(md, src.label, LOVABLE);
+      console.log(`Parsed ${groups.length} groups from ${src.location}`);
+      totalParsed += groups.length;
+
+      for (const g of groups) {
+        if (!g.title || g.day_of_week == null) continue;
+        const start = (g.start_time_24h || "").trim() || null;
+        const end = (g.end_time_24h || "").trim() || null;
+        const key = normalizeKey(src.location, g.title, g.day_of_week, start || "");
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+
+        const { error } = await sb.from("peer_support_groups").upsert(
+          {
+            external_key: key,
+            source: "share",
+            title: g.title,
+            day_of_week: g.day_of_week,
+            start_time: start,
+            end_time: end,
+            time_label: g.time_label || "",
+            location: src.location,
+            location_label: src.label,
+            format: g.format || "in-person",
+            zoom_id: g.zoom_id || null,
+            zoom_url: g.zoom_url || null,
+            zoom_password: g.zoom_password || null,
+            description: g.description || null,
+            tags: g.tags || null,
+            active: true,
+            last_verified_at: new Date().toISOString(),
+          },
+          { onConflict: "external_key" },
+        );
+        if (error) console.error("Upsert error", error);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`Source ${src.location} failed:`, msg);
+      errors.push(`${src.location}: ${msg}`);
+    }
+  }
+
+  if (seenKeys.size > 0) {
+    const { data: existing } = await sb.from("peer_support_groups").select("id, external_key").eq("source", "share");
+    const toDeactivate = (existing || []).filter((r: any) => !seenKeys.has(r.external_key)).map((r: any) => r.id);
+    if (toDeactivate.length > 0) {
+      await sb.from("peer_support_groups").update({ active: false }).in("id", toDeactivate);
+    }
+  }
+
+  const success = errors.length === 0 && totalParsed > 0;
+  await sb.from("peer_support_refresh_log").insert({
+    source: "share",
+    success,
+    groups_count: seenKeys.size,
+    error: errors.length ? errors.join(" | ") : null,
+  });
+  console.log(`Refresh complete: success=${success} count=${seenKeys.size}`);
+}
+
+// @ts-ignore EdgeRuntime is provided at runtime by Supabase
+declare const EdgeRuntime: { waitUntil: (p: Promise<unknown>) => void };
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -102,81 +176,28 @@ Deno.serve(async (req) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  if (!FIRECRAWL) return new Response(JSON.stringify({ error: "FIRECRAWL_API_KEY missing" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  if (!LOVABLE) return new Response(JSON.stringify({ error: "LOVABLE_API_KEY missing" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  if (!FIRECRAWL || !LOVABLE) {
+    return new Response(JSON.stringify({ error: "missing keys" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
+  const task = runRefresh(sb, FIRECRAWL, LOVABLE).catch((e) => console.error("runRefresh fatal", e));
 
   try {
-    let totalParsed = 0;
-    const seenKeys = new Set<string>();
-    const errors: string[] = [];
+    EdgeRuntime.waitUntil(task);
+  } catch {
+    // Local dev fallback
+  }
 
-    for (const src of SOURCES) {
-      try {
-        console.log(`Scraping ${src.url}`);
-        const md = await firecrawlScrape(src.url, FIRECRAWL);
-        console.log(`Got ${md.length} chars from ${src.location}`);
-        const groups = await aiParse(md, src.label, LOVABLE);
-        console.log(`Parsed ${groups.length} groups from ${src.location}`);
-        totalParsed += groups.length;
+  return new Response(JSON.stringify({ status: "started", message: "Refresh running in background. Check back in ~60s." }), {
+    status: 202,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+});
 
-        for (const g of groups) {
-          if (!g.title || g.day_of_week == null) continue;
-          const start = (g.start_time_24h || "").trim() || null;
-          const end = (g.end_time_24h || "").trim() || null;
-          const location = g.format === "online" && !g.zoom_url ? src.location : src.location;
-          const key = normalizeKey(location, g.title, g.day_of_week, start || "");
-          if (seenKeys.has(key)) continue;
-          seenKeys.add(key);
-
-          const { error } = await sb.from("peer_support_groups").upsert(
-            {
-              external_key: key,
-              source: "share",
-              title: g.title,
-              day_of_week: g.day_of_week,
-              start_time: start,
-              end_time: end,
-              time_label: g.time_label || "",
-              location,
-              location_label: src.label,
-              format: g.format || "in-person",
-              zoom_id: g.zoom_id || null,
-              zoom_url: g.zoom_url || null,
-              zoom_password: g.zoom_password || null,
-              description: g.description || null,
-              tags: g.tags || null,
-              active: true,
-              last_verified_at: new Date().toISOString(),
-            },
-            { onConflict: "external_key" },
-          );
-          if (error) console.error("Upsert error", error);
-        }
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        console.error(`Source ${src.location} failed:`, msg);
-        errors.push(`${src.location}: ${msg}`);
-      }
-    }
-
-    // Deactivate share-sourced groups that didn't appear this run
-    if (seenKeys.size > 0) {
-      const { data: existing } = await sb.from("peer_support_groups").select("id, external_key").eq("source", "share");
-      const toDeactivate = (existing || []).filter((r: any) => !seenKeys.has(r.external_key)).map((r: any) => r.id);
-      if (toDeactivate.length > 0) {
-        await sb.from("peer_support_groups").update({ active: false }).in("id", toDeactivate);
-      }
-    }
-
-    const success = errors.length === 0 && totalParsed > 0;
-    await sb.from("peer_support_refresh_log").insert({
-      source: "share",
-      success,
-      groups_count: seenKeys.size,
-      error: errors.length ? errors.join(" | ") : null,
-    });
 
     return new Response(JSON.stringify({ success, groups_count: seenKeys.size, total_parsed: totalParsed, errors }), {
       status: 200,
