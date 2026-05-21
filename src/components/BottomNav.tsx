@@ -1,4 +1,4 @@
-import { Home, Building2, Coffee, Heart, MessageSquare, ShieldAlert } from "lucide-react";
+import { Home, Building2, Coffee, Heart, MessageSquare, ShieldAlert, Users } from "lucide-react";
 import Butterfly from "./icons/Butterfly";
 
 interface BottomNavProps {
@@ -9,6 +9,7 @@ interface BottomNavProps {
 const tabs = [
   { id: "home", label: "Home", icon: Home },
   { id: "housing", label: "Housing", icon: Building2 },
+  { id: "peer", label: "Peer", icon: Users },
   { id: "daily", label: "Drop-In", icon: Coffee },
   { id: "medical", label: "Medical", icon: Heart },
   { id: "getout", label: "Safe Choices", icon: Butterfly },

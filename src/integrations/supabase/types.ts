@@ -174,6 +174,102 @@ export type Database = {
           },
         ]
       }
+      peer_support_groups: {
+        Row: {
+          active: boolean
+          created_at: string
+          day_of_week: number
+          description: string | null
+          end_time: string | null
+          external_key: string
+          format: string
+          id: string
+          last_verified_at: string
+          location: string
+          location_label: string | null
+          source: string
+          start_time: string | null
+          tags: string[] | null
+          time_label: string | null
+          title: string
+          updated_at: string
+          zoom_id: string | null
+          zoom_password: string | null
+          zoom_url: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          day_of_week: number
+          description?: string | null
+          end_time?: string | null
+          external_key: string
+          format?: string
+          id?: string
+          last_verified_at?: string
+          location: string
+          location_label?: string | null
+          source?: string
+          start_time?: string | null
+          tags?: string[] | null
+          time_label?: string | null
+          title: string
+          updated_at?: string
+          zoom_id?: string | null
+          zoom_password?: string | null
+          zoom_url?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          day_of_week?: number
+          description?: string | null
+          end_time?: string | null
+          external_key?: string
+          format?: string
+          id?: string
+          last_verified_at?: string
+          location?: string
+          location_label?: string | null
+          source?: string
+          start_time?: string | null
+          tags?: string[] | null
+          time_label?: string | null
+          title?: string
+          updated_at?: string
+          zoom_id?: string | null
+          zoom_password?: string | null
+          zoom_url?: string | null
+        }
+        Relationships: []
+      }
+      peer_support_refresh_log: {
+        Row: {
+          error: string | null
+          groups_count: number | null
+          id: string
+          ran_at: string
+          source: string
+          success: boolean
+        }
+        Insert: {
+          error?: string | null
+          groups_count?: number | null
+          id?: string
+          ran_at?: string
+          source?: string
+          success: boolean
+        }
+        Update: {
+          error?: string | null
+          groups_count?: number | null
+          id?: string
+          ran_at?: string
+          source?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           auth: string

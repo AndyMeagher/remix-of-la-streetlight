@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bed, UtensilsCrossed, Heart, Search, Building2, HandHeart, Navigation, Loader2, Coffee, Map, ShieldCheck } from "lucide-react";
+import { Bed, UtensilsCrossed, Heart, Search, Building2, HandHeart, Navigation, Loader2, Coffee, Map, ShieldCheck, Users } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import luceMascot from "@/assets/luce-mascot.png";
 import BottomNav from "../components/BottomNav";
@@ -9,6 +9,7 @@ import ResourceCard from "../components/ResourceCard";
 import SOSPanel from "../components/SOSPanel";
 import StreetTips from "../components/StreetTips";
 import NearMeNow from "../components/NearMeNow";
+import PeerSupport from "../components/PeerSupport";
 import LightJourney from "../components/LightJourney";
 import DocumentVault from "../components/DocumentVault";
 import LuceWelcome from "../components/LuceWelcome";
@@ -113,6 +114,21 @@ const Index = () => {
           <p className="text-[11px] text-muted-foreground mt-0.5">PIN-protected & private</p>
         </button>
       </div>
+
+      {/* Peer to Peer Support entry */}
+      <button
+        onClick={() => setActiveTab("peer")}
+        className="w-full mb-6 bg-card border border-border rounded-xl p-4 flex items-center gap-3 active:bg-secondary transition-colors text-left"
+      >
+        <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+          <Users className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1">
+          <p className="font-display text-sm text-foreground">Peer to Peer Support</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Free drop-in groups · Powered by Share Help LA</p>
+        </div>
+      </button>
+
 
       {/* Search */}
       <div className="relative mb-6">
@@ -241,6 +257,7 @@ const Index = () => {
       {activeTab === "vault" && <DocumentVault />}
       {activeTab === "sos" && <SOSPanel />}
       {activeTab === "tips" && <StreetTips />}
+      {activeTab === "peer" && <PeerSupport />}
       {["housing", "daily"].includes(activeTab) && renderGroup(activeTab)}
       {["medical", "getout"].includes(activeTab) && (() => {
         const config = resourceMap[activeTab];
