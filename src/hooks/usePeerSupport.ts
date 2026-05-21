@@ -46,10 +46,26 @@ export function usePeerSupport() {
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("refresh-peer-support");
+      const { error } = await supabase.functions.invoke("refresh-peer-support");
       if (error) throw error;
+      // Function runs in background — poll for up to 90s for a new log entry
+      const startedAt = new Date().toISOString();
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const { data: logRow } = await supabase
+          .from("peer_support_refresh_log")
+          .select("*")
+          .gte("ran_at", startedAt)
+          .order("ran_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (logRow) {
+          await load();
+          return logRow;
+        }
+      }
       await load();
-      return data;
+      return { success: false, groups_count: 0, error: "Refresh timed out — try again." };
     } finally {
       setRefreshing(false);
     }
