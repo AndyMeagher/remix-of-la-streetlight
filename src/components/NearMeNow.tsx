@@ -73,13 +73,17 @@ const NearMeNow = () => {
         .filter((r) => ["shelter", "food", "medical", "dropin", "trafficking"].includes(r.category))
         .filter((r) => r.lat != null && r.lng != null);
 
-      const nearby: NearbyResource[] = allResources
+      const ranked: NearbyResource[] = allResources
         .map((r) => {
           const dist = haversineDistance(latitude, longitude, r.lat!, r.lng!);
           return { ...r, calculatedDistance: parseFloat(dist.toFixed(1)) };
         })
-        .filter((r) => r.calculatedDistance <= 10)
         .sort((a, b) => a.calculatedDistance - b.calculatedDistance);
+
+      // Prefer resources within 10 miles; if none, fall back to nearest 10 overall
+      // (handles imprecise web geolocation that may resolve far from the user).
+      const within10 = ranked.filter((r) => r.calculatedDistance <= 10);
+      const nearby = within10.length > 0 ? within10 : ranked.slice(0, 10);
 
       setResults(nearby);
       setStatus("results");
@@ -224,7 +228,7 @@ const NearMeNow = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.slice(0, 5).map((resource) => (
+          {filtered.slice(0, 10).map((resource) => (
             <div key={resource.id} className="bg-card border border-border rounded-xl p-4">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex-1 min-w-0">
