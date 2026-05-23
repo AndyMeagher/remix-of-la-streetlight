@@ -125,7 +125,7 @@ const Index = () => {
         </div>
         <div className="flex-1">
           <p className="font-display text-sm text-foreground">Peer to Peer Support</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Free drop-in groups · Powered by Share Help LA</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Free drop-in groups · Powered by SHARE!</p>
         </div>
       </button>
 
