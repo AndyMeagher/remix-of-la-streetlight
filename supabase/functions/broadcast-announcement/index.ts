@@ -118,7 +118,9 @@ async function createApnsJwt(): Promise<string> {
   const claimsB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify({ iss: teamId, iat: now })));
   const unsignedToken = `${headerB64}.${claimsB64}`;
   const signature = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(unsignedToken));
-  return `${unsignedToken}.${base64UrlEncode(new Uint8Array(signature))}`;
+  const jwt = `${unsignedToken}.${base64UrlEncode(new Uint8Array(signature))}`;
+  _apnsJwtCache = { jwt, createdAt: Date.now() };
+  return jwt;
 }
 
 async function sendApnsPush(deviceToken: string, title: string, body: string, bundleId: string) {
