@@ -92,7 +92,7 @@ const PeerSupport = () => {
               rel="noreferrer"
               className="text-primary hover:underline inline-flex items-center gap-0.5"
             >
-              Share Help LA <ExternalLink className="w-3 h-3" />
+              SHARE! <ExternalLink className="w-3 h-3" />
             </a>
           </p>
         </div>
