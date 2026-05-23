@@ -100,7 +100,13 @@ async function sendWebPush(sub: { endpoint: string; p256dh: string; auth: string
   return { expired: false, status: response.status };
 }
 
+let _apnsJwtCache: { jwt: string; createdAt: number } | null = null;
 async function createApnsJwt(): Promise<string> {
+  // APNs returns 429 TooManyProviderTokenUpdates if JWT is regenerated too often.
+  // Reuse for ~30 min.
+  if (_apnsJwtCache && Date.now() - _apnsJwtCache.createdAt < 30 * 60 * 1000) {
+    return _apnsJwtCache.jwt;
+  }
   const keyId = Deno.env.get("APNS_KEY_ID")!;
   const teamId = Deno.env.get("APNS_TEAM_ID")!;
   const privateKeyPem = Deno.env.get("APNS_KEY")!;
