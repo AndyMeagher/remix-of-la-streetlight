@@ -228,7 +228,7 @@ const NearMeNow = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.slice(0, 5).map((resource) => (
+          {filtered.slice(0, 10).map((resource) => (
             <div key={resource.id} className="bg-card border border-border rounded-xl p-4">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex-1 min-w-0">
