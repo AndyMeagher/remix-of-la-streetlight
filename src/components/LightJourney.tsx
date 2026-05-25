@@ -104,13 +104,62 @@ const LightJourney = () => {
 
   const totalH = 60 + MILESTONES.length * ROW_H;
 
+  const progressPct = completedCount / MILESTONES.length;
+  const isComplete = completedCount === MILESTONES.length;
+
+  // Sunrise palette stops by progress (0 → midnight, 1 → golden dawn)
+  const sunriseTop = `hsl(${222 - progressPct * 200}, ${47 + progressPct * 20}%, ${11 + progressPct * 35}%)`;
+  const sunriseMid = `hsl(${260 - progressPct * 240}, ${40 + progressPct * 40}%, ${15 + progressPct * 45}%)`;
+  const sunriseBot = `hsl(${280 - progressPct * 240}, ${30 + progressPct * 50}%, ${10 + progressPct * 30}%)`;
+  const sunY = 100 - progressPct * 70; // rises from bottom (100%) toward 30%
+  const sunOpacity = 0.15 + progressPct * 0.85;
+  const sunSize = 180 + progressPct * 220;
+
   return (
-    <div className="px-4 pt-6 pb-24">
+    <div className="relative px-4 pt-6 pb-24 overflow-hidden transition-colors duration-1000">
+      {/* Sunrise sky background */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 transition-all duration-1000"
+        style={{
+          background: `linear-gradient(180deg, ${sunriseTop} 0%, ${sunriseMid} 55%, ${sunriseBot} 100%)`,
+        }}
+      />
+      {/* Rising sun */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 -z-10 rounded-full transition-all duration-1000 ease-out"
+        style={{
+          top: `${sunY}%`,
+          width: sunSize,
+          height: sunSize,
+          transform: "translate(-50%, -50%)",
+          opacity: sunOpacity,
+          background:
+            "radial-gradient(circle, hsl(43 96% 70% / 0.9) 0%, hsl(28 95% 60% / 0.55) 35%, hsl(15 90% 50% / 0.15) 65%, transparent 80%)",
+          filter: `blur(${8 + progressPct * 12}px)`,
+        }}
+      />
+
       <div className="mb-4">
         <h2 className="font-display text-xl text-foreground">Light Journey</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Your road to independence — one step at a time.
+          {isComplete
+            ? "The sun is up. You lit every light. ☀️"
+            : "Your road to independence — one step at a time."}
         </p>
+        {/* Progress bar */}
+        <div className="mt-3 h-1.5 rounded-full bg-background/40 overflow-hidden">
+          <div
+            className="h-full transition-all duration-1000 ease-out"
+            style={{
+              width: `${progressPct * 100}%`,
+              background:
+                "linear-gradient(90deg, hsl(43 96% 64%), hsl(28 95% 60%), hsl(15 90% 55%))",
+              boxShadow: "0 0 12px hsl(43 96% 64% / 0.6)",
+            }}
+          />
+        </div>
       </div>
 
       {/* Progress card */}
