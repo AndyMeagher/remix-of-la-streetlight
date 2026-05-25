@@ -175,6 +175,7 @@ const DocumentVault = () => {
     if (!PIN_RX.test(pin)) return setError("PIN must be 4–8 digits.");
     if (pin !== pin2) return setError("PINs don't match.");
     await encryptVault(pin, {});
+    playVaultUnlockSound();
     setSessionPin(pin);
     setData({});
     setMode("main");
