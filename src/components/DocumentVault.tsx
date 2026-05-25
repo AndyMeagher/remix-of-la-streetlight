@@ -195,6 +195,7 @@ const DocumentVault = () => {
     const ok = await verifyPin(pin);
     if (!ok) return setError("That PIN didn't match. Try again.");
     const decrypted = (await decryptVault<VaultData>(pin)) || {};
+    playVaultUnlockSound();
     setSessionPin(pin);
     setData(decrypted);
     setMode("main");
