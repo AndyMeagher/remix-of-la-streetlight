@@ -300,6 +300,46 @@ const LightJourney = () => {
           </div>
         </div>
       )}
+
+      {/* Sunrise completion celebration */}
+      {showCompletion && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowCompletion(false)}
+        >
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 70%, hsl(43 96% 64% / 0.55), hsl(15 90% 50% / 0.35) 40%, hsl(280 50% 10% / 0.95) 80%)",
+            }}
+          />
+          <div
+            className="relative bg-card border border-primary/40 rounded-2xl p-6 w-full max-w-sm text-center streetlight-glow animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{ boxShadow: "0 0 60px hsl(43 96% 64% / 0.5)" }}
+          >
+            <div className="text-5xl mb-3">☀️</div>
+            <h3 className="font-display text-2xl text-foreground mb-2">
+              Sunrise unlocked.
+            </h3>
+            <p className="text-sm text-muted-foreground mb-5">
+              You lit every milestone on your journey. The night is over — you built
+              your own daylight. Bonus <span className="text-primary font-semibold">+100 Light Points</span> awarded.
+            </p>
+            <button
+              onClick={() => {
+                awardLightPoints("milestone_complete", "journey_complete_bonus");
+                setShowCompletion(false);
+              }}
+              className="w-full bg-primary text-primary-foreground rounded-lg py-3 text-sm font-semibold"
+            >
+              Claim my sunrise ✨
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
