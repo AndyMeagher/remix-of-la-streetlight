@@ -3,6 +3,7 @@ import { Lock, Unlock, ShieldCheck, Download, ChevronRight, AlertTriangle, Check
 import { clearVault, decryptVault, encryptVault, vaultExists, verifyPin } from "@/lib/vaultCrypto";
 import { awardLightPoints } from "@/hooks/useLightPoints";
 import { toast } from "@/hooks/use-toast";
+import { playVaultUnlockSound, playVaultLockSound } from "@/lib/feedbackSounds";
 
 type FieldType = "text" | "select" | "date" | "textarea" | "tel";
 
@@ -159,6 +160,7 @@ const DocumentVault = () => {
   );
 
   const lock = () => {
+    playVaultLockSound();
     setSessionPin(null);
     setData({});
     setMode(vaultExists() ? "unlock" : "intro");
@@ -173,6 +175,7 @@ const DocumentVault = () => {
     if (!PIN_RX.test(pin)) return setError("PIN must be 4–8 digits.");
     if (pin !== pin2) return setError("PINs don't match.");
     await encryptVault(pin, {});
+    playVaultUnlockSound();
     setSessionPin(pin);
     setData({});
     setMode("main");
@@ -192,6 +195,7 @@ const DocumentVault = () => {
     const ok = await verifyPin(pin);
     if (!ok) return setError("That PIN didn't match. Try again.");
     const decrypted = (await decryptVault<VaultData>(pin)) || {};
+    playVaultUnlockSound();
     setSessionPin(pin);
     setData(decrypted);
     setMode("main");
