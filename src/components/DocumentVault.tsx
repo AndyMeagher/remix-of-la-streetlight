@@ -160,6 +160,7 @@ const DocumentVault = () => {
   );
 
   const lock = () => {
+    playVaultLockSound();
     setSessionPin(null);
     setData({});
     setMode(vaultExists() ? "unlock" : "intro");
