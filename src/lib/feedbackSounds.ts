@@ -121,3 +121,56 @@ export function playTipSubmittedSound() {
     playTone(audioCtx, 990, 0.14, 0.4, 0.04);
   });
 }
+
+/** Short mechanical "click" — used to mimic a lock turning. */
+function playClick(
+  audioCtx: AudioContext,
+  startOffset: number,
+  peakGain = 0.18,
+  bandFreq = 2200,
+) {
+  const now = audioCtx.currentTime + startOffset;
+  const duration = 0.07;
+  const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+  }
+  const src = audioCtx.createBufferSource();
+  src.buffer = buffer;
+
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.Q.value = 3;
+  filter.frequency.value = bandFreq;
+
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(peakGain, now + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+  src.connect(filter).connect(gain).connect(audioCtx.destination);
+  src.start(now);
+  src.stop(now + duration + 0.02);
+}
+
+/** Vault unlocked: two-stage lock click + soft warm chime of relief. */
+export function playVaultUnlockSound() {
+  safePlay((audioCtx) => {
+    // Tumbler clicks
+    playClick(audioCtx, 0, 0.18, 2400);
+    playClick(audioCtx, 0.11, 0.22, 1800);
+    // Soft "release" chime
+    playTone(audioCtx, 587, 0.22, 0.5, 0.06, 784); // D5 → G5
+    playTone(audioCtx, 880, 0.26, 0.45, 0.035); // A5 shimmer
+  });
+}
+
+/** Vault locked: single firm click + low confirming tone. */
+export function playVaultLockSound() {
+  safePlay((audioCtx) => {
+    playClick(audioCtx, 0, 0.24, 1500);
+    playTone(audioCtx, 220, 0.04, 0.32, 0.05); // low A3 thud
+  });
+}
