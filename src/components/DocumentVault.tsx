@@ -3,6 +3,7 @@ import { Lock, Unlock, ShieldCheck, Download, ChevronRight, AlertTriangle, Check
 import { clearVault, decryptVault, encryptVault, vaultExists, verifyPin } from "@/lib/vaultCrypto";
 import { awardLightPoints } from "@/hooks/useLightPoints";
 import { toast } from "@/hooks/use-toast";
+import { playVaultUnlockSound, playVaultLockSound } from "@/lib/feedbackSounds";
 
 type FieldType = "text" | "select" | "date" | "textarea" | "tel";
 
