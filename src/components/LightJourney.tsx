@@ -57,6 +57,7 @@ function loadProgress(): Record<string, boolean> {
 const LightJourney = () => {
   const [progress, setProgress] = useState<Record<string, boolean>>(loadProgress);
   const [selected, setSelected] = useState<Milestone | null>(null);
+  const [showCompletion, setShowCompletion] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
@@ -69,7 +70,8 @@ const LightJourney = () => {
 
   const toggle = async (m: Milestone) => {
     const wasComplete = !!progress[m.id];
-    setProgress((p) => ({ ...p, [m.id]: !wasComplete }));
+    const nextProgress = { ...progress, [m.id]: !wasComplete };
+    setProgress(nextProgress);
     if (!wasComplete) {
       const result = await awardLightPoints("milestone_complete", m.id);
       if (result?.awarded) {
@@ -79,6 +81,17 @@ const LightJourney = () => {
         });
       } else {
         toast({ title: `${m.title} unlocked ✨`, description: "One step closer." });
+      }
+      const nowComplete = MILESTONES.every((x) => nextProgress[x.id]);
+      const wasAlreadyComplete = MILESTONES.every((x) => progress[x.id]);
+      if (nowComplete && !wasAlreadyComplete) {
+        const seenKey = "luce_journey_completed_v1";
+        if (!localStorage.getItem(seenKey)) {
+          localStorage.setItem(seenKey, "1");
+          setTimeout(() => setShowCompletion(true), 400);
+        } else {
+          setShowCompletion(true);
+        }
       }
     }
     setSelected(null);
