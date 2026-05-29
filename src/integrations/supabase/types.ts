@@ -145,6 +145,7 @@ export type Database = {
       notification_history: {
         Row: {
           campaign_id: string | null
+          campaign_message_id: string | null
           device_id: string
           id: string
           message_index: number
@@ -152,6 +153,7 @@ export type Database = {
         }
         Insert: {
           campaign_id?: string | null
+          campaign_message_id?: string | null
           device_id: string
           id?: string
           message_index: number
@@ -159,6 +161,7 @@ export type Database = {
         }
         Update: {
           campaign_id?: string | null
+          campaign_message_id?: string | null
           device_id?: string
           id?: string
           message_index?: number
@@ -170,6 +173,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "scheduled_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_history_campaign_message_id_fkey"
+            columns: ["campaign_message_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_messages"
             referencedColumns: ["id"]
           },
         ]
