@@ -495,12 +495,15 @@ Deno.serve(async (req) => {
       activeCampaigns && activeCampaigns.length > 0 ? activeCampaigns[0] : null;
     let campaignMessages: Array<{ title: string; body: string }> = [];
 
+    let campaignMessagesFull: Array<{ id: string; title: string; body: string }> = [];
+
     if (activeCampaign) {
       const { data: msgs } = await supabase
         .from("campaign_messages")
-        .select("title, body")
+        .select("id, title, body")
         .eq("campaign_id", activeCampaign.id);
-      campaignMessages = msgs ?? [];
+      campaignMessagesFull = msgs ?? [];
+      campaignMessages = campaignMessagesFull.map(m => ({ title: m.title, body: m.body }));
       if (campaignMessages.length === 0) {
         console.log(`Campaign "${activeCampaign.name}" active but has no messages — skipping campaign mode.`);
         activeCampaign = null;
@@ -508,6 +511,7 @@ Deno.serve(async (req) => {
         console.log(`Active campaign: "${activeCampaign.name}" with ${campaignMessages.length} messages.`);
       }
     }
+
 
     const weekStart = new Date(now);
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
