@@ -625,69 +625,78 @@ Deno.serve(async (req) => {
       // Also check legacy field for web devices
       if (device.last_notified_at) {
         const lastSent = new Date(device.last_notified_at);
-        const hoursSince = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
-        if (hoursSince < 24) continue;
-      }
-
       // ── Campaign delivery (takes precedence, bypasses 40% gate) ──
+      // Sends one campaign message per day per device, picking one they haven't
+      // received yet during this campaign. Falls back to any campaign message
+      // if they've already seen them all.
       if (activeCampaign) {
-        const { data: alreadyGot } = await supabase
+        const { data: alreadyReceived } = await supabase
           .from("notification_history")
-          .select("id")
+          .select("campaign_message_id")
           .eq("device_id", device.device_id)
-          .eq("campaign_id", activeCampaign.id)
-          .gte("sent_at", activeCampaign.start_date)
-          .limit(1);
+          .eq("campaign_id", activeCampaign.id);
 
-        if (!alreadyGot || alreadyGot.length === 0) {
-          const pick = campaignMessages[Math.floor(Math.random() * campaignMessages.length)];
-          const campaignPayload = JSON.stringify({
-            title: pick.title || "Luce",
-            body: pick.body,
-            type: "encouragement",
-          });
+        const seenIds = new Set(
+          (alreadyReceived ?? [])
+            .map((r: { campaign_message_id: string | null }) => r.campaign_message_id)
+            .filter((x): x is string => !!x),
+        );
+        const unseen = campaignMessagesFull.filter(m => !seenIds.has(m.id));
+        const pool = unseen.length > 0 ? unseen : campaignMessagesFull;
+        const pick = pool[Math.floor(Math.random() * pool.length)];
 
-          let cResult: { expired: boolean; status?: number };
-          try {
-            if (device.platform === "ios") {
-              cResult = await sendApnsPush(device.token, campaignPayload, bundleId);
-            } else if (device.platform === "android") {
-              cResult = await sendFcmPush(device.token, campaignPayload);
-            } else {
-              if (!device.p256dh || !device.auth) continue;
-              cResult = await sendWebPush(
-                { endpoint: device.token, p256dh: device.p256dh, auth: device.auth },
-                campaignPayload,
-              );
-            }
-          } catch (err) {
-            console.error(`  Campaign send failed for ${device.device_id}:`, err);
-            continue;
+        const campaignPayload = JSON.stringify({
+          title: pick.title || "Luce",
+          body: pick.body,
+          type: "encouragement",
+        });
+
+        let cResult: { expired: boolean; status?: number };
+        try {
+          if (device.platform === "ios") {
+            cResult = await sendApnsPush(device.token, campaignPayload, bundleId);
+          } else if (device.platform === "android") {
+            cResult = await sendFcmPush(device.token, campaignPayload);
+          } else {
+            if (!device.p256dh || !device.auth) continue;
+            cResult = await sendWebPush(
+              { endpoint: device.token, p256dh: device.p256dh, auth: device.auth },
+              campaignPayload,
+            );
           }
+        } catch (err) {
+          console.error(`  Campaign send failed for ${device.device_id}:`, err);
+          continue;
+        }
 
-          if (cResult.expired) {
-            await supabase.from("device_tokens").delete().eq("device_id", device.device_id);
-            await supabase.from("push_subscriptions").delete().eq("device_id", device.device_id);
-            continue;
-          }
-          if (cResult.status && cResult.status >= 400) continue;
+        if (cResult.expired) {
+          await supabase.from("device_tokens").delete().eq("device_id", device.device_id);
+          await supabase.from("push_subscriptions").delete().eq("device_id", device.device_id);
+          continue;
+        }
+        if (cResult.status && cResult.status >= 400) continue;
 
-          await supabase.from("notification_history").insert({
-            device_id: device.device_id,
-            message_index: -1, // sentinel: campaign message, not pool index
-            campaign_id: activeCampaign.id,
-          });
+        await supabase.from("notification_history").insert({
+          device_id: device.device_id,
+          message_index: -1, // sentinel: campaign message
+          campaign_id: activeCampaign.id,
+          campaign_message_id: pick.id,
+        });
 
-          if (device.platform === "web") {
-            await supabase
-              .from("push_subscriptions")
-              .update({
-                last_notified_at: now.toISOString(),
-                notifications_this_week: weeklyCount + 1,
-                week_start: weekStartStr,
-              })
-              .eq("device_id", device.device_id);
-          }
+        if (device.platform === "web") {
+          await supabase
+            .from("push_subscriptions")
+            .update({
+              last_notified_at: now.toISOString(),
+              notifications_this_week: weeklyCount + 1,
+              week_start: weekStartStr,
+            })
+            .eq("device_id", device.device_id);
+        }
+
+        sent++;
+        continue; // skip the regular pool send for this device this run
+      }
 
           sent++;
           continue; // skip the regular pool send for this device this run
