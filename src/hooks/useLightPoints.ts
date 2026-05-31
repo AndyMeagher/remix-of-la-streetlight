@@ -74,6 +74,15 @@ export async function awardLightPoints(action: LightAction, refId?: string) {
     } else {
       playLightEarnedSound();
     }
+    // Surface the Luce notification prompt after a positive moment
+    try {
+      const { triggerLuceNotifValueMoment } = await import(
+        "@/components/LuceNotificationPrompt"
+      );
+      triggerLuceNotifValueMoment();
+    } catch {
+      // non-fatal
+    }
   }
   return result;
 }
