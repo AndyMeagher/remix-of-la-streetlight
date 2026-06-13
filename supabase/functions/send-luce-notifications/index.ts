@@ -43,6 +43,8 @@ const MESSAGES = [
   { body: "LA Street Light exists because nobody should have to feel alone. Know someone who needs it? Share today.", type: "encouragement" },
   { body: "I hope you find your people.", type: "encouragement" },
   { body: "You've been through a lot.. It makes sense that trusting people is hard.", type: "encouragement" },
+  { body: "Your past taught you to wait. But today? Today you can try. You're not alone.", type: "encouragement" },
+  { body: "It's okay if hope feels far. Just do one thing. Just one step.", type: "encouragement" },
 ];
 
 const ENCOURAGEMENT_INDICES = MESSAGES.map((m, i) => m.type === "encouragement" ? i : -1).filter(i => i >= 0);
