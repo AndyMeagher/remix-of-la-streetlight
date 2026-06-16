@@ -467,7 +467,11 @@ Deno.serve(async (req) => {
   }
 
   try {
-    if (!isDeliveryWindow()) {
+    let body: Record<string, unknown> | null = null;
+    try { body = await req.json(); } catch { /* no body */ }
+    const force = body?.force === true;
+
+    if (!force && !isDeliveryWindow()) {
       return new Response(JSON.stringify({ message: "Outside delivery window" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -591,10 +595,7 @@ Deno.serve(async (req) => {
 
     // Get the iOS bundle ID from request body or use default
     let bundleId = "com.lastreetlight.lastreetlight";
-    try {
-      const body = await req.json();
-      if (body?.bundleId) bundleId = body.bundleId;
-    } catch { /* no body, use default */ }
+    if (body?.bundleId && typeof body.bundleId === "string") bundleId = body.bundleId;
 
     console.log(`Using bundle ID: ${bundleId}`);
 
