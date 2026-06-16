@@ -467,7 +467,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    if (!isDeliveryWindow()) {
+    let force = false;
+    try {
+      const body = await req.json();
+      if (body?.force === true) force = true;
+    } catch { /* no body */ }
+
+    if (!force && !isDeliveryWindow()) {
       return new Response(JSON.stringify({ message: "Outside delivery window" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
