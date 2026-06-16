@@ -615,18 +615,18 @@ Deno.serve(async (req) => {
       const weeklyCount = recentHistory?.length || 0;
       console.log(`  Weekly count: ${weeklyCount}, last sent: ${recentHistory?.[0]?.sent_at ?? "never"}`);
 
-      // Max 5 per week
-      if (weeklyCount >= 5) continue;
+      // Max 5 per week (bypassed when force=true for urgent campaigns)
+      if (!force && weeklyCount >= 5) continue;
 
-      // At least 24h between sends
-      if (recentHistory && recentHistory.length > 0) {
+      // At least 24h between sends (bypassed when force=true)
+      if (!force && recentHistory && recentHistory.length > 0) {
         const lastSent = new Date(recentHistory[0].sent_at);
         const hoursSince = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
         if (hoursSince < 24) continue;
       }
 
       // Also check legacy field for web devices
-      if (device.last_notified_at) {
+      if (!force && device.last_notified_at) {
         const lastSent = new Date(device.last_notified_at);
         const hoursSince = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
         if (hoursSince < 24) continue;
