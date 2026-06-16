@@ -627,6 +627,10 @@ Deno.serve(async (req) => {
       // Also check legacy field for web devices
       if (device.last_notified_at) {
         const lastSent = new Date(device.last_notified_at);
+        const hoursSince = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
+        if (hoursSince < 24) continue;
+      }
+
       // ── Campaign delivery (takes precedence, bypasses 40% gate) ──
       // Sends one campaign message per day per device, picking one they haven't
       // received yet during this campaign. Falls back to any campaign message
@@ -698,11 +702,6 @@ Deno.serve(async (req) => {
 
         sent++;
         continue; // skip the regular pool send for this device this run
-      }
-
-          sent++;
-          continue; // skip the regular pool send for this device this run
-        }
       }
 
       // Probabilistic send: ~0.40 chance per cron run (40%)
