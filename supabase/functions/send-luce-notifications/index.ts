@@ -467,11 +467,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    let force = false;
-    try {
-      const body = await req.json();
-      if (body?.force === true) force = true;
-    } catch { /* no body */ }
+    let body: Record<string, unknown> | null = null;
+    try { body = await req.json(); } catch { /* no body */ }
+    const force = body?.force === true;
 
     if (!force && !isDeliveryWindow()) {
       return new Response(JSON.stringify({ message: "Outside delivery window" }), {
