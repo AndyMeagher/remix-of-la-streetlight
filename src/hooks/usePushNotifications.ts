@@ -148,8 +148,14 @@ export function usePushNotifications() {
           });
         }),
 
-        PushNotifications.addListener("pushNotificationActionPerformed", () => {
-          // User tapped a background notification — nothing extra needed for now
+        PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+          // User tapped a background notification — re-surface the content
+          // inside the app so they can finish reading it.
+          const n = action.notification;
+          setForegroundNotification({
+            title: n.title ?? "Luce",
+            body: n.body ?? "",
+          });
         }),
       ]);
 
