@@ -73,11 +73,50 @@ export function usePushNotifications() {
   useEffect(() => {
     console.log("[PushNotif] isNative:", isNative, "platform:", Capacitor.getPlatform());
     if (!isNative) {
+      let swMessageHandler: ((event: MessageEvent) => void) | null = null;
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/sw.js").catch(console.error);
+
+        // Surface tapped-notification content from the SW so the user can
+        // re-read the message after the OS notification disappears.
+        swMessageHandler = (event: MessageEvent) => {
+          const d = event.data;
+          if (d?.kind === "notification-click") {
+            setForegroundNotification({
+              title: d.title ?? "Luce",
+              body: d.body ?? "",
+            });
+          }
+        };
+        navigator.serviceWorker.addEventListener("message", swMessageHandler);
+
+        // Cold-start path: SW opened a new window with notif content in URL.
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const title = params.get("notifTitle");
+          const body = params.get("notifBody");
+          if (title || body) {
+            setForegroundNotification({ title: title ?? "Luce", body: body ?? "" });
+            params.delete("notifTitle");
+            params.delete("notifBody");
+            params.delete("notifType");
+            const qs = params.toString();
+            window.history.replaceState(
+              {},
+              "",
+              window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash,
+            );
+          }
+        } catch {
+          // ignore
+        }
       }
       checkWebSubscription();
-      return;
+      return () => {
+        if (swMessageHandler && "serviceWorker" in navigator) {
+          navigator.serviceWorker.removeEventListener("message", swMessageHandler);
+        }
+      };
     }
 
     let cancelled = false;
