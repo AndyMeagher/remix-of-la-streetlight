@@ -60,6 +60,19 @@ const SOSPanel = () => {
             <p className="text-xs text-muted-foreground mt-0.5">(213) 221-7646</p>
           </div>
         </a>
+
+        <a
+          href="tel:18007997233"
+          className="flex items-center gap-4 bg-destructive/10 border border-destructive/30 rounded-xl p-4 active:bg-destructive/20 transition-colors"
+        >
+          <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
+            <Phone className="w-6 h-6 text-destructive" />
+          </div>
+          <div>
+            <h3 className="font-display text-sm text-foreground">National Domestic Violence Hotline</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">1-800-799-7233 • 24/7</p>
+          </div>
+        </a>
       </div>
     </div>
   );
