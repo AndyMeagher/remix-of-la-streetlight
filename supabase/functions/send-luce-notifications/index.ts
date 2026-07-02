@@ -45,6 +45,7 @@ const MESSAGES = [
   { body: "You've been through a lot.. It makes sense that trusting people is hard.", type: "encouragement" },
   { body: "Your past taught you to wait. But today? Today you can try. You're not alone.", type: "encouragement" },
   { body: "It's okay if hope feels far. Just do one thing. Just one step.", type: "encouragement" },
+  { body: "Stability isn't just about getting the keys—it's about keeping them.", type: "encouragement" },
 ];
 
 const ENCOURAGEMENT_INDICES = MESSAGES.map((m, i) => m.type === "encouragement" ? i : -1).filter(i => i >= 0);
